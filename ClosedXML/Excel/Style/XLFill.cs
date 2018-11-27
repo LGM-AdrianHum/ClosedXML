@@ -1,184 +1,205 @@
 using System;
-using System.Text;
+using System.Linq;
 
 namespace ClosedXML.Excel
 {
     internal class XLFill : IXLFill
     {
-        #region IXLFill Members
+        #region static members
 
-        public bool Equals(IXLFill other)
+        internal static XLFillKey GenerateKey(IXLFill defaultFill)
         {
-            return
-                _patternType == other.PatternType
-                && _patternColor.Equals(other.PatternColor)
-                && _patternBackgroundColor.Equals(other.PatternBackgroundColor)
-                ;
+            XLFillKey key;
+            if (defaultFill == null)
+            {
+                key = XLFillValue.Default.Key;
+            }
+            else if (defaultFill is XLFill)
+            {
+                key = (defaultFill as XLFill).Key;
+            }
+            else
+            {
+                key = new XLFillKey
+                {
+                    PatternType = defaultFill.PatternType,
+                    BackgroundColor = defaultFill.BackgroundColor.Key,
+                    PatternColor = defaultFill.PatternColor.Key
+                };
+            }
+            return key;
         }
 
-        #endregion
-
-        private void SetStyleChanged()
-        {
-            if (_container != null) _container.StyleChanged = true;
-        }
-
-        public override bool Equals(object obj)
-        {
-            return Equals((XLFill)obj);
-        }
-
-        public override int GetHashCode()
-        {
-            return BackgroundColor.GetHashCode()
-                   ^ (Int32)PatternType
-                   ^ PatternColor.GetHashCode();
-        }
+        #endregion static members
 
         #region Properties
 
-        private XLColor _patternBackgroundColor;
-        private XLColor _patternColor;
-        private XLFillPatternValues _patternType;
+        private readonly XLStyle _style;
+
+        private XLFillValue _value;
+
+        internal XLFillKey Key
+        {
+            get { return _value.Key; }
+            private set { _value = XLFillValue.FromKey(value); }
+        }
+
+        #endregion Properties
+
+        #region Constructors
+
+        /// <summary>
+        /// Create an instance of XLFill initializing it with the specified value.
+        /// </summary>
+        /// <param name="style">Style to attach the new instance to.</param>
+        /// <param name="value">Style value to use.</param>
+        public XLFill(XLStyle style, XLFillValue value)
+        {
+            _style = style ?? XLStyle.CreateEmptyStyle();
+            _value = value;
+        }
+
+        public XLFill(XLStyle style, XLFillKey key) : this(style, XLFillValue.FromKey(key))
+        {
+        }
+
+        public XLFill(XLStyle style = null, IXLFill d = null) : this(style, GenerateKey(d))
+        {
+        }
+
+        #endregion Constructors
+
+        private void Modify(Func<XLFillKey, XLFillKey> modification)
+        {
+            Key = modification(Key);
+
+            _style.Modify(styleKey =>
+            {
+                var fill = styleKey.Fill;
+                styleKey.Fill = modification(fill);
+                return styleKey;
+            });
+        }
+
+        #region IXLFill Members
 
         public XLColor BackgroundColor
         {
-            get { return _patternColor; }
+            get { return XLColor.FromKey(Key.BackgroundColor); }
             set
             {
-                SetStyleChanged();
-                if (_container != null && !_container.UpdatingStyle)
-                    _container.Styles.ForEach(s => s.Fill.BackgroundColor = value);
-                else
-                {
-                    _patternType = value.HasValue ? XLFillPatternValues.Solid : XLFillPatternValues.None;
-                    _patternColor = value;
-                    _patternBackgroundColor = value;
+                if (value == null)
+                    throw new ArgumentNullException(nameof(value), "Color cannot be null");
 
-                    PatternTypeModified = true;
-                    PatternColorModified = true;
-                    PatternBackgroundColorModified = true;
+                if ((PatternType == XLFillPatternValues.None ||
+                     PatternType == XLFillPatternValues.Solid)
+                    && XLColor.IsNullOrTransparent(BackgroundColor))
+                {
+                    var patternType = value.HasValue ? XLFillPatternValues.Solid : XLFillPatternValues.None;
+                    Modify(k =>
+                    {
+                        k.BackgroundColor = value.Key;
+                        k.PatternType = patternType;
+                        return k;
+                    });
                 }
+                else
+                    Modify(k => { k.BackgroundColor = value.Key; return k; });
             }
         }
 
-        public Boolean PatternColorModified;
         public XLColor PatternColor
         {
-            get { return _patternColor; }
+            get { return XLColor.FromKey(Key.PatternColor); }
             set
             {
-                SetStyleChanged();
-                if (_container != null && !_container.UpdatingStyle)
-                    _container.Styles.ForEach(s => s.Fill.PatternColor = value);
-                else
-                {
-                    _patternColor = value;
-                    PatternColorModified = true;
-                }
+                if (value == null)
+                    throw new ArgumentNullException(nameof(value), "Color cannot be null");
+
+                Modify(k => { k.PatternColor = value.Key; return k; });
             }
         }
 
-        public Boolean PatternBackgroundColorModified;
-        public XLColor PatternBackgroundColor
-        {
-            get { return _patternBackgroundColor; }
-            set
-            {
-                SetStyleChanged();
-                if (_container != null && !_container.UpdatingStyle)
-                    _container.Styles.ForEach(s => s.Fill.PatternBackgroundColor = value);
-                else
-                {
-                    _patternBackgroundColor = value;
-                    PatternBackgroundColorModified = true;
-                }
-            }
-        }
-
-        public Boolean PatternTypeModified;
         public XLFillPatternValues PatternType
         {
-            get { return _patternType; }
+            get { return Key.PatternType; }
             set
             {
-                SetStyleChanged();
-                if (_container != null && !_container.UpdatingStyle)
-                    _container.Styles.ForEach(s => s.Fill.PatternType = value);
-                else
+                if (PatternType == XLFillPatternValues.None &&
+                    value != XLFillPatternValues.None)
                 {
-                    _patternType = value;
-                    PatternTypeModified = true;
+                    // If fill was empty and the pattern changes to non-empty we have to specify a background color too.
+                    // Otherwise the fill will be considered empty and pattern won't update (the cached empty fill will be used).
+                    Modify(k =>
+                    {
+                        k.BackgroundColor = XLColor.FromTheme(XLThemeColor.Text1).Key;
+                        k.PatternType = value;
+                        return k;
+                    });
                 }
+                else
+                    Modify(k => { k.PatternType = value; return k; });
             }
         }
 
         public IXLStyle SetBackgroundColor(XLColor value)
         {
             BackgroundColor = value;
-            return _container.Style;
+            return _style;
         }
 
         public IXLStyle SetPatternColor(XLColor value)
         {
             PatternColor = value;
-            return _container.Style;
-        }
-
-        public IXLStyle SetPatternBackgroundColor(XLColor value)
-        {
-            PatternBackgroundColor = value;
-            return _container.Style;
+            return _style;
         }
 
         public IXLStyle SetPatternType(XLFillPatternValues value)
         {
             PatternType = value;
-            return _container.Style;
+            return _style;
         }
 
-        #endregion
-
-        #region Constructors
-
-        private readonly IXLStylized _container;
-
-        public XLFill() : this(null, XLWorkbook.DefaultStyle.Fill)
-        {
-        }
-
-        public XLFill(IXLStylized container, IXLFill defaultFill = null, Boolean useDefaultModify = true)
-        {
-            _container = container;
-            if (defaultFill == null) return;
-            _patternType = defaultFill.PatternType;
-            _patternColor = defaultFill.PatternColor;
-            _patternBackgroundColor = defaultFill.PatternBackgroundColor;
-
-            if (useDefaultModify)
-            {
-                var d = defaultFill as XLFill;
-                PatternBackgroundColorModified = d.PatternBackgroundColorModified;
-                PatternColorModified = d.PatternColorModified;
-                PatternTypeModified = d.PatternTypeModified;
-            }
-        }
-
-        #endregion
+        #endregion IXLFill Members
 
         #region Overridden
 
-        public override string ToString()
+        public override bool Equals(object obj)
         {
-            var sb = new StringBuilder();
-            sb.Append(BackgroundColor);
-            sb.Append("-");
-            sb.Append(PatternType.ToString());
-            sb.Append("-");
-            sb.Append(PatternColor);
-            return sb.ToString();
+            return Equals(obj as XLFill);
         }
 
-        #endregion
+        public bool Equals(IXLFill other)
+        {
+            var otherF = other as XLFill;
+            if (otherF == null)
+                return false;
+
+            return Key == otherF.Key;
+        }
+
+        public override string ToString()
+        {
+            switch (PatternType)
+            {
+                case XLFillPatternValues.None:
+                    return "None";
+
+                case XLFillPatternValues.Solid:
+                    return string.Concat("Solid ", BackgroundColor.ToString());
+
+                default:
+                    return string.Concat(PatternType.ToString(), " pattern: ", PatternColor.ToString(), " on ", BackgroundColor.ToString());
+            }
+        }
+
+        public override int GetHashCode()
+        {
+            var hashCode = -1938644919;
+            hashCode = hashCode * -1521134295 + Key.GetHashCode();
+            return hashCode;
+        }
+
+        #endregion Overridden
     }
 }

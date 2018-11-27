@@ -9,7 +9,7 @@ namespace ClosedXML.Excel
         Worksheet
     }
 
-    public interface IXLRangeBase : IDisposable
+    public interface IXLRangeBase
     {
         IXLWorksheet Worksheet { get; }
 
@@ -39,7 +39,7 @@ namespace ClosedXML.Excel
         ///   The type of the cell's data.
         /// </value>
         /// <exception cref = "ArgumentException"></exception>
-        XLCellValues DataType { set; }
+        XLDataType DataType { set; }
 
         /// <summary>
         ///   Sets the cells' formula with A1 references.
@@ -72,7 +72,10 @@ namespace ClosedXML.Excel
 
         IXLCells Cells(Boolean usedCellsOnly);
 
+        [Obsolete("Use the overload with XLCellsUsedOptions")]
         IXLCells Cells(Boolean usedCellsOnly, Boolean includeFormats);
+
+        IXLCells Cells(Boolean usedCellsOnly, XLCellsUsedOptions options);
 
         IXLCells Cells(String cells);
 
@@ -87,11 +90,17 @@ namespace ClosedXML.Excel
         ///   Returns the collection of cells that have a value.
         /// </summary>
         /// <param name = "includeFormats">if set to <c>true</c> will return all cells with a value or a style different than the default.</param>
+        [Obsolete("Use the overload with XLCellsUsedOptions")]
         IXLCells CellsUsed(Boolean includeFormats);
+
+        IXLCells CellsUsed(XLCellsUsedOptions options);
 
         IXLCells CellsUsed(Func<IXLCell, Boolean> predicate);
 
+        [Obsolete("Use the overload with XLCellsUsedOptions")]
         IXLCells CellsUsed(Boolean includeFormats, Func<IXLCell, Boolean> predicate);
+
+        IXLCells CellsUsed(XLCellsUsedOptions options, Func<IXLCell, Boolean> predicate);
 
         /// <summary>
         /// Searches the cells' contents for a given piece of text
@@ -118,11 +127,17 @@ namespace ClosedXML.Excel
         /// </summary>
         /// <para>The cell's address is going to be ([First Row with a value], [First Column with a value])</para>
         /// <param name = "includeFormats">if set to <c>true</c> will return all cells with a value or a style different than the default.</param>
+        [Obsolete("Use the overload with XLCellsUsedOptions")]
         IXLCell FirstCellUsed(Boolean includeFormats);
+
+        IXLCell FirstCellUsed(XLCellsUsedOptions options);
 
         IXLCell FirstCellUsed(Func<IXLCell, Boolean> predicate);
 
+        [Obsolete("Use the overload with XLCellsUsedOptions")]
         IXLCell FirstCellUsed(Boolean includeFormats, Func<IXLCell, Boolean> predicate);
+
+        IXLCell FirstCellUsed(XLCellsUsedOptions options, Func<IXLCell, Boolean> predicate);
 
         /// <summary>
         ///   Returns the last cell of this range.
@@ -140,11 +155,17 @@ namespace ClosedXML.Excel
         /// </summary>
         /// <para>The cell's address is going to be ([Last Row with a value], [Last Column with a value])</para>
         /// <param name = "includeFormats">if set to <c>true</c> will return all cells with a value or a style different than the default.</param>
+        [Obsolete("Use the overload with XLCellsUsedOptions")]
         IXLCell LastCellUsed(Boolean includeFormats);
+
+        IXLCell LastCellUsed(XLCellsUsedOptions options);
 
         IXLCell LastCellUsed(Func<IXLCell, Boolean> predicate);
 
+        [Obsolete("Use the overload with XLCellsUsedOptions")]
         IXLCell LastCellUsed(Boolean includeFormats, Func<IXLCell, Boolean> predicate);
+
+        IXLCell LastCellUsed(XLCellsUsedOptions options, Func<IXLCell, Boolean> predicate);
 
         /// <summary>
         ///   Determines whether this range contains the specified range (completely).
@@ -230,7 +251,7 @@ namespace ClosedXML.Excel
         /// Clears the contents of this range.
         /// </summary>
         /// <param name="clearOptions">Specify what you want to clear.</param>
-        IXLRangeBase Clear(XLClearOptions clearOptions = XLClearOptions.ContentsAndFormats);
+        IXLRangeBase Clear(XLClearOptions clearOptions = XLClearOptions.All);
 
         /// <summary>
         ///   Deletes the cell comments from this range.
@@ -248,13 +269,35 @@ namespace ClosedXML.Excel
 
         Boolean IsEmpty();
 
+        [Obsolete("Use the overload with XLCellsUsedOptions")]
         Boolean IsEmpty(Boolean includeFormats);
+
+        Boolean IsEmpty(XLCellsUsedOptions options);
+
+        /// <summary>
+        /// Determines whether range address spans the entire column.
+        /// </summary>
+        /// <returns>
+        ///   <c>true</c> if is entire column; otherwise, <c>false</c>.
+        /// </returns>
+        Boolean IsEntireColumn();
+
+        /// <summary>
+        /// Determines whether range address spans the entire row.
+        /// </summary>
+        /// <returns>
+        ///   <c>true</c> if is entire row; otherwise, <c>false</c>.
+        /// </returns>
 
         Boolean IsEntireRow();
 
-        Boolean IsEntireColumn();
-
-        IXLPivotTable CreatePivotTable(IXLCell targetCell);
+        /// <summary>
+        /// Determines whether the range address spans the entire worksheet.
+        /// </summary>
+        /// <returns>
+        ///   <c>true</c> if is entire sheet; otherwise, <c>false</c>.
+        /// </returns>
+        Boolean IsEntireSheet();
 
         IXLPivotTable CreatePivotTable(IXLCell targetCell, String name);
 

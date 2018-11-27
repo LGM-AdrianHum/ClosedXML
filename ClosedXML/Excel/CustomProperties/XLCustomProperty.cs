@@ -21,6 +21,8 @@ namespace ClosedXML.Excel
             get { return name; }
             set
             {
+                if (name == value) return;
+
                 if (_workbook.CustomProperties.Any(t => t.Name == value))
                     throw new ArgumentException(
                         String.Format("This workbook already contains a custom property named '{0}'", value));
@@ -33,14 +35,13 @@ namespace ClosedXML.Excel
         {
             get
             {
-                Double dTest;
                 if (Value is DateTime)
                     return XLCustomPropertyType.Date;
                 
                 if (Value is Boolean)
                     return XLCustomPropertyType.Boolean;
                 
-                if (Double.TryParse(Value.ToString(), out dTest))
+                if (Double.TryParse(Value.ToString(), out Double dTest))
                     return XLCustomPropertyType.Number;
                 
                 return XLCustomPropertyType.Text;

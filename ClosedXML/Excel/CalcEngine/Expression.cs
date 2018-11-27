@@ -84,7 +84,14 @@ namespace ClosedXML.Excel.CalcEngine
                 (x as ErrorExpression).ThrowApplicableException();
 
             var v = x.Evaluate();
-            return v == null ? string.Empty : v.ToString();
+
+            if (v == null)
+                return string.Empty;
+
+            if (v is bool b)
+                return b.ToString().ToUpper();
+
+            return v.ToString();
         }
 
         public static implicit operator double(Expression x)
@@ -96,21 +103,26 @@ namespace ClosedXML.Excel.CalcEngine
             var v = x.Evaluate();
 
             // handle doubles
-            if (v is double)
+            if (v is double dbl)
             {
-                return (double)v;
+                return dbl;
             }
 
             // handle booleans
-            if (v is bool)
+            if (v is bool b)
             {
-                return (bool)v ? 1 : 0;
+                return b ? 1 : 0;
             }
 
             // handle dates
-            if (v is DateTime)
+            if (v is DateTime dt)
             {
-                return ((DateTime)v).ToOADate();
+                return dt.ToOADate();
+            }
+
+            if (v is TimeSpan ts)
+            {
+                return ts.TotalDays;
             }
 
             // handle nulls
@@ -133,9 +145,9 @@ namespace ClosedXML.Excel.CalcEngine
             var v = x.Evaluate();
 
             // handle booleans
-            if (v is bool)
+            if (v is bool b)
             {
-                return (bool)v;
+                return b;
             }
 
             // handle nulls
@@ -145,13 +157,13 @@ namespace ClosedXML.Excel.CalcEngine
             }
 
             // handle doubles
-            if (v is double)
+            if (v is double dbl)
             {
-                return (double)v == 0 ? false : true;
+                return dbl != 0;
             }
 
             // handle everything else
-            return (double)x == 0 ? false : true;
+            return (double)Convert.ChangeType(v, typeof(double)) != 0;
         }
 
         public static implicit operator DateTime(Expression x)
@@ -163,13 +175,18 @@ namespace ClosedXML.Excel.CalcEngine
             var v = x.Evaluate();
 
             // handle dates
-            if (v is DateTime)
+            if (v is DateTime dt)
             {
-                return (DateTime)v;
+                return dt;
             }
 
-            // handle doubles
-            if (v is double || v is int)
+            if (v is TimeSpan ts)
+            {
+                return new DateTime().Add(ts);
+            }
+
+            // handle numbers
+            if (v.IsNumber())
             {
                 return DateTime.FromOADate((double)x);
             }
@@ -223,8 +240,11 @@ namespace ClosedXML.Excel.CalcEngine
                 catch (ArgumentNullException) { return -1; }
             }
 
-            // compare
-            return c1.CompareTo(c2);
+            // String comparisons should be case insensitive
+            if (c1 is string s1 && c2 is string s2)
+                return StringComparer.OrdinalIgnoreCase.Compare(s1, s2);
+            else
+                return c1.CompareTo(c2);
         }
 
         #endregion ** IComparable<Expression>
@@ -481,6 +501,9 @@ namespace ClosedXML.Excel.CalcEngine
 
         public IEnumerator GetEnumerator()
         {
+            if (_value is string)
+                return new[] { (string)_value }.GetEnumerator();
+
             return (_value as IEnumerable).GetEnumerator();
         }
 

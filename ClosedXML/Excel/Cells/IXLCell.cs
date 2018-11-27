@@ -5,16 +5,9 @@ using System.Data;
 
 namespace ClosedXML.Excel
 {
-    public enum XLCellValues { Text, Number, Boolean, DateTime, TimeSpan }
+    public enum XLDataType { Text, Number, Boolean, DateTime, TimeSpan }
 
     public enum XLTableCellType { None, Header, Data, Total }
-
-    public enum XLClearOptions
-    {
-        ContentsAndFormats,
-        Contents,
-        Formats
-    }
 
     public interface IXLCell
     {
@@ -24,6 +17,7 @@ namespace ClosedXML.Excel
         /// <para>If the object is an IEnumerable, ClosedXML will copy the collection's data into a table starting from this cell.</para>
         /// <para>If the object is a range, ClosedXML will copy the range starting from this cell.</para>
         /// <para>Setting the value to an object (not IEnumerable/range) will call the object's ToString() method.</para>
+        /// <para>If the value starts with a single quote, ClosedXML will assume the value is a text variable and will prefix the value with a single quote in Excel too.</para>
         /// </summary>
         /// <value>
         /// The object containing the value(s) to set.
@@ -51,7 +45,7 @@ namespace ClosedXML.Excel
         /// The type of the cell's data.
         /// </value>
         /// <exception cref="ArgumentException"></exception>
-        XLCellValues DataType { get; set; }
+        XLDataType DataType { get; set; }
 
         /// <summary>
         /// Sets the type of this cell's data.
@@ -60,7 +54,7 @@ namespace ClosedXML.Excel
         /// </summary>
         /// <param name="dataType">Type of the data.</param>
         /// <returns></returns>
-        IXLCell SetDataType(XLCellValues dataType);
+        IXLCell SetDataType(XLDataType dataType);
 
         /// <summary>
         /// Sets the cell's value.
@@ -131,7 +125,7 @@ namespace ClosedXML.Excel
         /// Clears the contents of this cell.
         /// </summary>
         /// <param name="clearOptions">Specify what you want to clear.</param>
-        IXLCell Clear(XLClearOptions clearOptions = XLClearOptions.ContentsAndFormats);
+        IXLCell Clear(XLClearOptions clearOptions = XLClearOptions.All);
 
         /// <summary>
         /// Deletes the current cell and shifts the surrounding cells according to the shiftDeleteCells parameter.
@@ -183,9 +177,9 @@ namespace ClosedXML.Excel
         /// Inserts the IEnumerable data elements and returns the range it occupies.
         /// </summary>
         /// <param name="data">The IEnumerable data.</param>
-        /// <param name="tranpose">if set to <c>true</c> the data will be transposed before inserting.</param>
+        /// <param name="transpose">if set to <c>true</c> the data will be transposed before inserting.</param>
         /// <returns></returns>
-        IXLRange InsertData(IEnumerable data, Boolean tranpose);
+        IXLRange InsertData(IEnumerable data, Boolean transpose);
 
         /// <summary>
         /// Inserts the data of a data table.
@@ -317,7 +311,28 @@ namespace ClosedXML.Excel
 
         IXLCell CopyTo(String target);
 
+        /// <summary>
+        /// Textual representation of cell calculated value (as it is saved to a workbook or read from it)
+        /// </summary>
+        [Obsolete("Use CachedValue instead")]
         String ValueCached { get; }
+
+        /// <summary>
+        /// Calculated value of cell formula. Is used for decreasing number of computations perfromed.
+        /// May hold invalid value when <see cref="NeedsRecalculation"/> flag is True.
+        /// </summary>
+        Object CachedValue { get; }
+
+        /// <summary>
+        /// Flag indicating that previously calculated cell value may be not valid anymore and has to be re-evaluated.
+        /// </summary>
+        Boolean NeedsRecalculation { get; }
+
+        /// <summary>
+        /// Invalidate <see cref="CachedValue"/> so the formula will be re-evaluated next time <see cref="Value"/> is accessed.
+        /// If cell does not contain formula nothing happens.
+        /// </summary>
+        void InvalidateFormula();
 
         IXLRichText RichText { get; }
         Boolean HasRichText { get; }
@@ -326,9 +341,14 @@ namespace ClosedXML.Excel
 
         Boolean IsMerged();
 
+        IXLRange MergedRange();
+
         Boolean IsEmpty();
 
+        [Obsolete("Use the overload with XLCellsUsedOptions")]
         Boolean IsEmpty(Boolean includeFormats);
+
+        Boolean IsEmpty(XLCellsUsedOptions options);
 
         IXLCell CellAbove();
 

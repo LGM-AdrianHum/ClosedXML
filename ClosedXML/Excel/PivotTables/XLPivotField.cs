@@ -1,21 +1,29 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace ClosedXML.Excel
 {
-    public class XLPivotField : IXLPivotField
+    [DebuggerDisplay("{SourceName}")]
+    internal class XLPivotField : IXLPivotField
     {
         public XLPivotField(string sourceName)
         {
             SourceName = sourceName;
-            SharedStrings = new List<string>();
             Subtotals = new List<XLSubtotalFunction>();
+            SelectedValues = new List<Object>();
+            SortType = XLPivotSortType.Default;
+            SetExcelDefaults();
         }
 
         public String SourceName { get; private set; }
         public String CustomName { get; set; }
 
         public IXLPivotField SetCustomName(String value) { CustomName = value; return this; }
+
+        public String SubtotalCaption { get; set; }
+
+        public IXLPivotField SetSubtotalCaption(String value) { SubtotalCaption = value; return this; }
 
         public List<XLSubtotalFunction> Subtotals { get; private set; }
 
@@ -27,11 +35,22 @@ namespace ClosedXML.Excel
 
         public IXLPivotField SetIncludeNewItemsInFilter(Boolean value) { IncludeNewItemsInFilter = value; return this; }
 
-        public XLPivotLayout Layout { get; set; }
+        public bool Outline { get; set; }
+        public bool Compact { get; set; }
 
-        public IXLPivotField SetLayout(XLPivotLayout value) { Layout = value; return this; }
+        public IXLPivotField SetLayout(XLPivotLayout value)
+        {
+            Compact = false;
+            Outline = false;
+            switch (value)
+            {
+                case XLPivotLayout.Compact: Compact = true; break;
+                case XLPivotLayout.Outline: Outline = true; break;
+            }
+            return this;
+        }
 
-        public Boolean SubtotalsAtTop { get; set; }
+        public Boolean? SubtotalsAtTop { get; set; }
 
         public IXLPivotField SetSubtotalsAtTop() { SubtotalsAtTop = true; return this; }
 
@@ -67,6 +86,28 @@ namespace ClosedXML.Excel
 
         public IXLPivotField SetCollapsed(Boolean value) { Collapsed = value; return this; }
 
-        public List<string> SharedStrings { get; set; }
+        public XLPivotSortType SortType { get; set; }
+
+        public IXLPivotField SetSort(XLPivotSortType value) { SortType = value; return this; }
+
+        public IList<Object> SelectedValues { get; private set; }
+        public IXLPivotField AddSelectedValue(Object value)
+        {
+            SelectedValues.Add(value);
+            return this;
+        }
+
+        private void SetExcelDefaults()
+        {
+            IncludeNewItemsInFilter = false;
+            Outline = true;
+            Compact = true;
+            InsertBlankLines = false;
+            ShowBlankItems = false;
+            InsertPageBreaks = false;
+            RepeatItemLabels = false;
+            SubtotalsAtTop = true;
+            Collapsed = false;
+        }
     }
 }

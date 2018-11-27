@@ -39,8 +39,8 @@ namespace ClosedXML.Excel
         /// <summary>
         /// Gets the specified column of the range.
         /// </summary>
-        /// <param name="columnNumber">The column number.</param>
-        /// <returns></returns>
+        /// <param name="columnNumber">1-based column number relative to the first column of this range.</param>
+        /// <returns>The relevant column</returns>
         IXLRangeColumn Column(int columnNumber);
 
         /// <summary>
@@ -57,7 +57,10 @@ namespace ClosedXML.Excel
         /// <summary>
         /// Gets the first column of the range that contains a cell with a value.
         /// </summary>
+        [Obsolete("Use the overload with XLCellsUsedOptions")]
         IXLRangeColumn FirstColumnUsed(Boolean includeFormats, Func<IXLRangeColumn, Boolean> predicate = null);
+
+        IXLRangeColumn FirstColumnUsed(XLCellsUsedOptions options, Func<IXLRangeColumn, Boolean> predicate = null);
 
         IXLRangeColumn FirstColumnUsed(Func<IXLRangeColumn, Boolean> predicate = null);
 
@@ -69,7 +72,10 @@ namespace ClosedXML.Excel
         /// <summary>
         /// Gets the last column of the range that contains a cell with a value.
         /// </summary>
+        [Obsolete("Use the overload with XLCellsUsedOptions")]
         IXLRangeColumn LastColumnUsed(Boolean includeFormats, Func<IXLRangeColumn, Boolean> predicate = null);
+
+        IXLRangeColumn LastColumnUsed(XLCellsUsedOptions options, Func<IXLRangeColumn, Boolean> predicate = null);
 
         IXLRangeColumn LastColumnUsed(Func<IXLRangeColumn, Boolean> predicate = null);
 
@@ -81,8 +87,8 @@ namespace ClosedXML.Excel
         /// <summary>
         /// Gets a collection of the specified columns in this range.
         /// </summary>
-        /// <param name="firstColumn">The first column to return.</param>
-        /// <param name="lastColumn">The last column to return.</param>
+        /// <param name="firstColumn">The first column to return. 1-based column number relative to the first column of this range.</param>
+        /// <param name="lastColumn">The last column to return. 1-based column number relative to the first column of this range.</param>
         IXLRangeColumns Columns(int firstColumn, int lastColumn);
 
         /// <summary>
@@ -90,6 +96,7 @@ namespace ClosedXML.Excel
         /// </summary>
         /// <param name="firstColumn">The first column to return.</param>
         /// <param name="lastColumn">The last column to return.</param>
+        /// <returns>The relevant columns</returns>
         IXLRangeColumns Columns(string firstColumn, string lastColumn);
 
         /// <summary>
@@ -117,7 +124,10 @@ namespace ClosedXML.Excel
         /// <summary>
         /// Gets the first row of the range that contains a cell with a value.
         /// </summary>
+        [Obsolete("Use the overload with XLCellsUsedOptions")]
         IXLRangeRow FirstRowUsed(Boolean includeFormats, Func<IXLRangeRow, Boolean> predicate = null);
+
+        IXLRangeRow FirstRowUsed(XLCellsUsedOptions options, Func<IXLRangeRow, Boolean> predicate = null);
 
         IXLRangeRow FirstRowUsed(Func<IXLRangeRow, Boolean> predicate = null);
 
@@ -129,14 +139,18 @@ namespace ClosedXML.Excel
         /// <summary>
         /// Gets the last row of the range that contains a cell with a value.
         /// </summary>
+        [Obsolete("Use the overload with XLCellsUsedOptions")]
         IXLRangeRow LastRowUsed(Boolean includeFormats, Func<IXLRangeRow, Boolean> predicate = null);
+
+        IXLRangeRow LastRowUsed(XLCellsUsedOptions options, Func<IXLRangeRow, Boolean> predicate = null);
 
         IXLRangeRow LastRowUsed(Func<IXLRangeRow, Boolean> predicate = null);
 
         /// <summary>
         /// Gets the specified row of the range.
         /// </summary>
-        /// <param name="row">The range row.</param>
+        /// <param name="row">1-based row number relative to the first row of this range.</param>
+        /// <returns>The relevant row</returns>
         IXLRangeRow Row(int row);
 
         IXLRangeRows Rows(Func<IXLRangeRow, Boolean> predicate = null);
@@ -144,8 +158,8 @@ namespace ClosedXML.Excel
         /// <summary>
         /// Gets a collection of the specified rows in this range.
         /// </summary>
-        /// <param name="firstRow">The first row to return.</param>
-        /// <param name="lastRow">The last row to return.</param>
+        /// <param name="firstRow">The first row to return. 1-based row number relative to the first row of this range.</param>
+        /// <param name="lastRow">The last row to return. 1-based row number relative to the first row of this range.</param>
         /// <returns></returns>
         IXLRangeRows Rows(int firstRow, int lastRow);
 
@@ -274,19 +288,25 @@ namespace ClosedXML.Excel
 
         IXLRange SortLeftToRight(XLSortOrder sortOrder = XLSortOrder.Ascending, Boolean matchCase = false, Boolean ignoreBlanks = true);
 
-        IXLRange SetDataType(XLCellValues dataType);
+        IXLRange SetDataType(XLDataType dataType);
 
         /// <summary>
         /// Clears the contents of this range.
         /// </summary>
         /// <param name="clearOptions">Specify what you want to clear.</param>
-        new IXLRange Clear(XLClearOptions clearOptions = XLClearOptions.ContentsAndFormats);
+        new IXLRange Clear(XLClearOptions clearOptions = XLClearOptions.All);
 
+        [Obsolete("Use the overload with XLCellsUsedOptions")]
         IXLRangeRows RowsUsed(Boolean includeFormats, Func<IXLRangeRow, Boolean> predicate = null);
+
+        IXLRangeRows RowsUsed(XLCellsUsedOptions options, Func<IXLRangeRow, Boolean> predicate = null);
 
         IXLRangeRows RowsUsed(Func<IXLRangeRow, Boolean> predicate = null);
 
+        [Obsolete("Use the overload with XLCellsUsedOptions")]
         IXLRangeColumns ColumnsUsed(Boolean includeFormats, Func<IXLRangeColumn, Boolean> predicate = null);
+
+        IXLRangeColumns ColumnsUsed(XLCellsUsedOptions options, Func<IXLRangeColumn, Boolean> predicate = null);
 
         IXLRangeColumns ColumnsUsed(Func<IXLRangeColumn, Boolean> predicate = null);
     }

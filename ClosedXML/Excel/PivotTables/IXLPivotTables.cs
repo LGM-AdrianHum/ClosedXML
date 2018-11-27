@@ -1,16 +1,26 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace ClosedXML.Excel
 {
-    public interface IXLPivotTables: IEnumerable<IXLPivotTable>
+    public interface IXLPivotTables : IEnumerable<IXLPivotTable>
     {
-        IXLPivotTable PivotTable(String name);
-        void Add(String name, IXLPivotTable pivotTable);
-        IXLPivotTable AddNew(String name, IXLCell target, IXLRange source);
+        IXLPivotTable Add(String name, IXLCell targetCell, IXLRange range);
+
+        IXLPivotTable Add(String name, IXLCell targetCell, IXLTable table);
+
+        [Obsolete("Use Add instead")]
+        IXLPivotTable AddNew(String name, IXLCell targetCell, IXLRange range);
+
+        [Obsolete("Use Add instead")]
+        IXLPivotTable AddNew(String name, IXLCell targetCell, IXLTable table);
+
+        Boolean Contains(String name);
+
         void Delete(String name);
+
         void DeleteAll();
+
+        IXLPivotTable PivotTable(String name);
     }
 }

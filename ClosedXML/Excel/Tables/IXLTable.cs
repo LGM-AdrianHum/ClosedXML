@@ -1,11 +1,13 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Data;
 
 namespace ClosedXML.Excel
 {
     public interface IXLTable : IXLRange
     {
-        IXLBaseAutoFilter AutoFilter { get; }
+        IXLAutoFilter AutoFilter { get; }
         IXLTableRange DataRange { get; }
         Boolean EmphasizeFirstColumn { get; set; }
         Boolean EmphasizeLastColumn { get; set; }
@@ -22,7 +24,7 @@ namespace ClosedXML.Excel
         /// Clears the contents of this table.
         /// </summary>
         /// <param name="clearOptions">Specify what you want to clear.</param>
-        new IXLTable Clear(XLClearOptions clearOptions = XLClearOptions.ContentsAndFormats);
+        new IXLTable Clear(XLClearOptions clearOptions = XLClearOptions.All);
 
         IXLTableField Field(string fieldName);
 
@@ -31,7 +33,91 @@ namespace ClosedXML.Excel
         IXLRangeRow HeadersRow();
 
         /// <summary>
-        /// Resizes the table to the specified range.
+        /// Appends the IEnumerable data elements and returns the range of the new rows.
+        /// </summary>
+        /// <param name="data">The IEnumerable data.</param>
+        /// <param name="propagateExtraColumns">if set to <c>true</c> propagate extra columns' values and formulas.</param>
+        /// <returns>
+        /// The range of the new rows.
+        /// </returns>
+        IXLRange AppendData(IEnumerable data, Boolean propagateExtraColumns = false);
+
+        /// <summary>
+        /// Appends the IEnumerable data elements and returns the range of the new rows.
+        /// </summary>
+        /// <param name="data">The IEnumerable data.</param>
+        /// <param name="transpose">if set to <c>true</c> the data will be transposed before inserting.</param>
+        /// <param name="propagateExtraColumns">if set to <c>true</c> propagate extra columns' values and formulas.</param>
+        /// <returns>
+        /// The range of the new rows.
+        /// </returns>
+        IXLRange AppendData(IEnumerable data, Boolean transpose, Boolean propagateExtraColumns = false);
+
+        /// <summary>
+        /// Appends the data of a data table and returns the range of the new rows.
+        /// </summary>
+        /// <param name="dataTable">The data table.</param>
+        /// <param name="propagateExtraColumns">if set to <c>true</c> propagate extra columns' values and formulas.</param>
+        /// <returns>
+        /// The range of the new rows.
+        /// </returns>
+        IXLRange AppendData(DataTable dataTable, Boolean propagateExtraColumns = false);
+
+        /// <summary>
+        /// Appends the IEnumerable data elements and returns the range of the new rows.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="data">The table data.</param>
+        /// <param name="propagateExtraColumns">if set to <c>true</c> propagate extra columns' values and formulas.</param>
+        /// <returns>
+        /// The range of the new rows.
+        /// </returns>
+        IXLRange AppendData<T>(IEnumerable<T> data, Boolean propagateExtraColumns = false);
+
+        /// <summary>
+        /// Replaces the IEnumerable data elements and returns the table's data range.
+        /// </summary>
+        /// <param name="data">The IEnumerable data.</param>
+        /// <param name="propagateExtraColumns">if set to <c>true</c> propagate extra columns' values and formulas.</param>
+        /// <returns>
+        /// The table's data range.
+        /// </returns>
+        IXLRange ReplaceData(IEnumerable data, Boolean propagateExtraColumns = false);
+
+        /// <summary>
+        /// Replaces the IEnumerable data elements and returns the table's data range.
+        /// </summary>
+        /// <param name="data">The IEnumerable data.</param>
+        /// <param name="transpose">if set to <c>true</c> the data will be transposed before inserting.</param>
+        /// <param name="propagateExtraColumns">if set to <c>true</c> propagate extra columns' values and formulas.</param>
+        /// <returns>
+        /// The table's data range.
+        /// </returns>
+        IXLRange ReplaceData(IEnumerable data, Boolean transpose, Boolean propagateExtraColumns = false);
+
+        /// <summary>
+        /// Replaces the data from the records of a data table and returns the table's data range.
+        /// </summary>
+        /// <param name="dataTable">The data table.</param>
+        /// <param name="propagateExtraColumns">if set to <c>true</c> propagate extra columns' values and formulas.</param>
+        /// <returns>
+        /// The table's data range.
+        /// </returns>
+        IXLRange ReplaceData(DataTable dataTable, Boolean propagateExtraColumns = false);
+
+        /// <summary>
+        /// Replaces the IEnumerable data elements as a table and the table's data range.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="data">The table data.</param>
+        /// <param name="propagateExtraColumns">if set to <c>true</c> propagate extra columns' values and formulas.</param>
+        /// <returns>
+        /// The table's data range.
+        /// </returns>
+        IXLRange ReplaceData<T>(IEnumerable<T> data, Boolean propagateExtraColumns = false);
+
+        /// <summary>
+        /// Resizes the table to the specified range address.
         /// </summary>
         /// <param name="range">The new table range.</param>
         /// <returns></returns>
@@ -85,7 +171,7 @@ namespace ClosedXML.Excel
         /// <returns></returns>
         IXLTable Resize(int firstCellRow, int firstCellColumn, int lastCellRow, int lastCellColumn);
 
-        new IXLBaseAutoFilter SetAutoFilter();
+        new IXLAutoFilter SetAutoFilter();
 
         IXLTable SetEmphasizeFirstColumn();
 
@@ -116,5 +202,19 @@ namespace ClosedXML.Excel
         IXLTable SetShowTotalsRow(Boolean value);
 
         IXLRangeRow TotalsRow();
+
+        /// <summary>
+        /// Converts the table to an enumerable of dynamic objects
+        /// </summary>
+        /// <returns></returns>
+        IEnumerable<dynamic> AsDynamicEnumerable();
+
+        /// <summary>
+        /// Converts the table to a standard .NET System.Data.DataTable
+        /// </summary>
+        /// <returns></returns>
+        DataTable AsNativeDataTable();
+
+        IXLTable CopyTo(IXLWorksheet targetSheet);
     }
 }

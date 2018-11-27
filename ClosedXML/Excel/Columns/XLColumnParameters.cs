@@ -5,14 +5,14 @@ namespace ClosedXML.Excel
 {
     internal class XLColumnParameters
     {
-        public XLColumnParameters(XLWorksheet worksheet, Int32 defaultStyleId, Boolean isReference)
+        public XLColumnParameters(XLWorksheet worksheet, IXLStyle defaultStyle)
         {
             Worksheet = worksheet;
-            DefaultStyleId = defaultStyleId;
-            IsReference = isReference;
+            DefaultStyle = defaultStyle;
+            //IsReference = isReference;
         }
-        public Int32 DefaultStyleId { get; set; }
+        public IXLStyle DefaultStyle { get; private set; }
         public XLWorksheet Worksheet { get; private set; }
-        public Boolean IsReference { get; private set; }
+        //public Boolean IsReference { get; private set; }
     }
 }

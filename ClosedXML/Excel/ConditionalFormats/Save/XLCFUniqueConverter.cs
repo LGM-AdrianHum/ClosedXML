@@ -1,4 +1,5 @@
 using DocumentFormat.OpenXml.Spreadsheet;
+using System;
 
 namespace ClosedXML.Excel
 {
@@ -7,7 +8,10 @@ namespace ClosedXML.Excel
         public ConditionalFormattingRule Convert(IXLConditionalFormat cf, int priority, XLWorkbook.SaveContext context)
         {
             var conditionalFormattingRule = XLCFBaseConverter.Convert(cf, priority);
-            conditionalFormattingRule.FormatId = (uint)context.DifferentialFormats[cf.Style];
+            var cfStyle = (cf.Style as XLStyle).Value;
+            if (!cfStyle.Equals(XLWorkbook.DefaultStyleValue))
+                conditionalFormattingRule.FormatId = (UInt32)context.DifferentialFormats[cfStyle.Key];
+
             return conditionalFormattingRule;
         }
     }

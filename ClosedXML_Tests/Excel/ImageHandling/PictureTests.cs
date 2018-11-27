@@ -35,6 +35,27 @@ namespace ClosedXML_Tests
         }
 
         [Test]
+        public void CanAddPictureFromStream()
+        {
+            using (var wb = new XLWorkbook())
+            {
+                var ws = wb.AddWorksheet("Sheet1");
+
+                using (var resourceStream = Assembly.GetAssembly(typeof(ClosedXML_Examples.BasicTable)).GetManifestResourceStream("ClosedXML_Examples.Resources.SampleImage.jpg"))
+                {
+                    var picture = ws.AddPicture(resourceStream, "MyPicture")
+                        .WithPlacement(XLPicturePlacement.FreeFloating)
+                        .MoveTo(50, 50)
+                        .WithSize(200, 200);
+
+                    Assert.AreEqual(XLPictureFormat.Jpeg, picture.Format);
+                    Assert.AreEqual(200, picture.Width);
+                    Assert.AreEqual(200, picture.Height);
+                }
+            }
+        }
+
+        [Test]
         public void CanAddPictureFromFile()
         {
             using (var wb = new XLWorkbook())
@@ -77,9 +98,8 @@ namespace ClosedXML_Tests
                 var ws = wb.AddWorksheet("Sheet1");
 
                 using (var resourceStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("ClosedXML_Tests.Resource.Images.ImageHandling.png"))
-                using (var bitmap = Bitmap.FromStream(resourceStream) as Bitmap)
                 {
-                    var pic = ws.AddPicture(bitmap, "MyPicture")
+                    var pic = ws.AddPicture(resourceStream, "MyPicture")
                         .WithPlacement(XLPicturePlacement.FreeFloating)
                         .MoveTo(50, 50);
 
@@ -177,10 +197,10 @@ namespace ClosedXML_Tests
         public void XLMarkerTests()
         {
             IXLWorksheet ws = new XLWorkbook().Worksheets.Add("Sheet1");
-            XLMarker firstMarker = new XLMarker(ws.Cell(1, 10).Address, new Point(100, 0));
+            XLMarker firstMarker = new XLMarker(ws.Cell(1, 10), new Point(100, 0));
 
-            Assert.AreEqual("J", firstMarker.Address.ColumnLetter);
-            Assert.AreEqual(1, firstMarker.Address.RowNumber);
+            Assert.AreEqual(10, firstMarker.ColumnNumber);
+            Assert.AreEqual(1, firstMarker.RowNumber);
             Assert.AreEqual(100, firstMarker.Offset.X);
             Assert.AreEqual(0, firstMarker.Offset.Y);
         }
@@ -228,14 +248,28 @@ namespace ClosedXML_Tests
         [Test]
         public void CanDeletePictures()
         {
-            using (var stream = TestHelper.GetStreamFromResource(TestHelper.GetResourcePath(@"Examples\ImageHandling\ImageAnchors.xlsx")))
-            using (var wb = new XLWorkbook(stream))
+            using (var ms = new MemoryStream())
             {
-                var ws = wb.Worksheets.First();
-                ws.Pictures.Delete(ws.Pictures.First());
+                int originalCount;
 
-                var pictureName = ws.Pictures.First().Name;
-                ws.Pictures.Delete(pictureName);
+                using (var stream = TestHelper.GetStreamFromResource(TestHelper.GetResourcePath(@"Examples\ImageHandling\ImageAnchors.xlsx")))
+                using (var wb = new XLWorkbook(stream))
+                {
+                    var ws = wb.Worksheets.First();
+                    originalCount = ws.Pictures.Count;
+                    ws.Pictures.Delete(ws.Pictures.First());
+
+                    var pictureName = ws.Pictures.First().Name;
+                    ws.Pictures.Delete(pictureName);
+
+                    wb.SaveAs(ms);
+                }
+
+                using (var wb = new XLWorkbook(ms))
+                {
+                    var ws = wb.Worksheets.First();
+                    Assert.AreEqual(originalCount - 2, ws.Pictures.Count);
+                }
             }
         }
 
@@ -293,6 +327,100 @@ namespace ClosedXML_Tests
                         .WithPlacement(XLPicturePlacement.FreeFloating)
                         .MoveTo(440, 300) as XLPicture;
                 }
+            }
+        }
+
+        [Test]
+        public void CopyImageSameWorksheet()
+        {
+            var wb = new XLWorkbook();
+            var ws1 = wb.Worksheets.Add("Sheet1");
+
+            IXLPicture original;
+            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("ClosedXML_Tests.Resource.Images.ImageHandling.png"))
+            {
+                original = (ws1 as XLWorksheet).AddPicture(stream, "Picture 1", 2)
+                    .WithPlacement(XLPicturePlacement.FreeFloating)
+                    .MoveTo(220, 155) as XLPicture;
+            }
+
+            var copy = original.Duplicate()
+                .MoveTo(300, 200) as XLPicture;
+
+            Assert.AreEqual(2, ws1.Pictures.Count());
+            Assert.AreEqual(ws1, copy.Worksheet);
+            Assert.AreEqual(original.Format, copy.Format);
+            Assert.AreEqual(original.Height, copy.Height);
+            Assert.AreEqual(original.Placement, copy.Placement);
+            Assert.AreEqual(original.TopLeftCell.ToString(), copy.TopLeftCell.ToString());
+            Assert.AreEqual(original.Width, copy.Width);
+            Assert.AreEqual(original.ImageStream.ToArray(), copy.ImageStream.ToArray(), "Image streams differ");
+
+            Assert.AreEqual(200, copy.Top);
+            Assert.AreEqual(300, copy.Left);
+            Assert.AreNotEqual(original.Id, copy.Id);
+            Assert.AreNotEqual(original.Name, copy.Name);
+        }
+
+        [Test]
+        public void CopyImageDifferentWorksheets()
+        {
+            var wb = new XLWorkbook();
+            var ws1 = wb.Worksheets.Add("Sheet1");
+            IXLPicture original;
+            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("ClosedXML_Tests.Resource.Images.ImageHandling.png"))
+            {
+                original = (ws1 as XLWorksheet).AddPicture(stream, "Picture 1", 2)
+                    .WithPlacement(XLPicturePlacement.FreeFloating)
+                    .MoveTo(220, 155) as XLPicture;
+            }
+            var ws2 = wb.Worksheets.Add("Sheet2");
+
+            var copy = original.CopyTo(ws2);
+
+            Assert.AreEqual(1, ws1.Pictures.Count());
+            Assert.AreEqual(1, ws2.Pictures.Count());
+
+            Assert.AreEqual(ws2, copy.Worksheet);
+
+            Assert.AreEqual(original.Format, copy.Format);
+            Assert.AreEqual(original.Height, copy.Height);
+            Assert.AreEqual(original.Left, copy.Left);
+            Assert.AreEqual(original.Name, copy.Name);
+            Assert.AreEqual(original.Placement, copy.Placement);
+            Assert.AreEqual(original.Top, copy.Top);
+            Assert.AreEqual(original.TopLeftCell.ToString(), copy.TopLeftCell.ToString());
+            Assert.AreEqual(original.Width, copy.Width);
+            Assert.AreEqual(original.ImageStream.ToArray(), copy.ImageStream.ToArray(), "Image streams differ");
+
+            Assert.AreNotEqual(original.Id, copy.Id);
+        }
+
+        [Test]
+        public void PictureShiftsWhenInsertingRows()
+        {
+            using (var wb = new XLWorkbook())
+            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("ClosedXML_Tests.Resource.Images.ImageHandling.png"))
+            {
+                var ws = wb.Worksheets.Add("ImageShift");
+                var picture = ws.AddPicture(stream, XLPictureFormat.Png, "PngImage")
+                    .MoveTo(ws.Cell(5, 2))
+                    .WithPlacement(XLPicturePlacement.Move);
+
+                ws.Row(2).InsertRowsBelow(20);
+
+                Assert.AreEqual(25, picture.TopLeftCell.Address.RowNumber);
+            }
+        }
+
+        [Test]
+        public void PictureNotFound()
+        {
+            using (var wb = new XLWorkbook())
+            {
+                var ws = wb.AddWorksheet("Sheet1");
+                Assert.Throws<ArgumentOutOfRangeException>(() => ws.Picture("dummy"));
+                Assert.Throws<ArgumentOutOfRangeException>(() => ws.Pictures.Delete("dummy"));
             }
         }
     }

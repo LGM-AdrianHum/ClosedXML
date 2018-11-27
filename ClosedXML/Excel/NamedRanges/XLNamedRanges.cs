@@ -6,27 +6,32 @@ namespace ClosedXML.Excel
 {
     internal class XLNamedRanges : IXLNamedRanges
     {
-        private readonly Dictionary<String, IXLNamedRange> _namedRanges = new Dictionary<String, IXLNamedRange>();
+        private readonly Dictionary<String, IXLNamedRange> _namedRanges = new Dictionary<String, IXLNamedRange>(StringComparer.OrdinalIgnoreCase);
+
         internal XLWorkbook Workbook { get; set; }
+
         internal XLWorksheet Worksheet { get; set; }
+
+        internal XLNamedRangeScope Scope { get; }
 
         public XLNamedRanges(XLWorksheet worksheet)
             : this(worksheet.Workbook)
         {
             Worksheet = worksheet;
+            Scope = XLNamedRangeScope.Worksheet;
         }
 
         public XLNamedRanges(XLWorkbook workbook)
         {
             Workbook = workbook;
+            Scope = XLNamedRangeScope.Workbook;
         }
 
         #region IXLNamedRanges Members
 
         public IXLNamedRange NamedRange(String rangeName)
         {
-            IXLNamedRange range;
-            if (_namedRanges.TryGetValue(rangeName, out range))
+            if (_namedRanges.TryGetValue(rangeName, out IXLNamedRange range))
                 return range;
 
             return null;
@@ -49,7 +54,7 @@ namespace ClosedXML.Excel
 
         public IXLNamedRange Add(String rangeName, String rangeAddress, String comment)
         {
-            return Add(rangeName, rangeAddress, comment, false);
+            return Add(rangeName, rangeAddress, comment, validateName: true, validateRangeAddress: true);
         }
 
         /// <summary>
@@ -58,31 +63,47 @@ namespace ClosedXML.Excel
         /// <param name="rangeName">Name of the range.</param>
         /// <param name="rangeAddress">The range address.</param>
         /// <param name="comment">The comment.</param>
-        /// <param name="acceptInvalidReferences">if set to <c>true</c> range address will not be checked for validity. Necessary when loading files as is.</param>
+        /// <param name="validateName">if set to <c>true</c> validates the name.</param>
+        /// <param name="validateRangeAddress">if set to <c>true</c> range address will be checked for validity.</param>
         /// <returns></returns>
-        /// <exception cref="System.ArgumentException">For named ranges in the workbook scope, specify the sheet name in the reference.</exception>
-        internal IXLNamedRange Add(String rangeName, String rangeAddress, String comment, bool acceptInvalidReferences)
+        /// <exception cref="NotSupportedException"></exception>
+        /// <exception cref="ArgumentException">
+        /// For named ranges in the workbook scope, specify the sheet name in the reference.
+        /// </exception>
+        internal IXLNamedRange Add(String rangeName, String rangeAddress, String comment, Boolean validateName, Boolean validateRangeAddress)
         {
-            if (!acceptInvalidReferences)
+            // When loading named ranges from an existing file, we do not validate the range address or name.
+            if (validateRangeAddress)
             {
                 var match = XLHelper.NamedRangeReferenceRegex.Match(rangeAddress);
 
                 if (!match.Success)
                 {
-                    var range = Worksheet?.Range(rangeAddress) ?? Workbook.Range(rangeAddress);
-                    if (range == null)
-                        throw new ArgumentException(string.Format("The range address '{0}' for the named range '{1}' is not a valid range.", rangeAddress, rangeName));
-                    else
+                    if (XLHelper.IsValidRangeAddress(rangeAddress))
                     {
-                        if (Worksheet == null || !XLHelper.NamedRangeReferenceRegex.Match(range.ToString()).Success)
-                            throw new ArgumentException("For named ranges in the workbook scope, specify the sheet name in the reference.");
+                        IXLRange range = null;
+                        if (Scope == XLNamedRangeScope.Worksheet)
+                            range = Worksheet.Range(rangeAddress);
+                        else if (Scope == XLNamedRangeScope.Workbook)
+                            range = Workbook.Range(rangeAddress);
                         else
-                            rangeAddress = Worksheet.Range(rangeAddress).ToString();
+                            throw new NotSupportedException($"Scope {Scope} is not supported");
+
+                        if (range == null)
+                            throw new ArgumentException(string.Format(
+                                "The range address '{0}' for the named range '{1}' is not a valid range.", rangeAddress,
+                                rangeName));
+
+                        if (Scope == XLNamedRangeScope.Workbook || !XLHelper.NamedRangeReferenceRegex.Match(range.ToString()).Success)
+                            throw new ArgumentException(
+                                "For named ranges in the workbook scope, specify the sheet name in the reference.");
+
+                        rangeAddress = Worksheet.Range(rangeAddress).ToString();
                     }
                 }
             }
 
-            var namedRange = new XLNamedRange(this, rangeName, rangeAddress, comment);
+            var namedRange = new XLNamedRange(this, rangeName, validateName, rangeAddress, comment);
             _namedRanges.Add(rangeName, namedRange);
             return namedRange;
         }
@@ -100,6 +121,12 @@ namespace ClosedXML.Excel
             return namedRange;
         }
 
+        public IXLNamedRange Add(String rangeName, IXLNamedRange namedRange)
+        {
+            _namedRanges.Add(rangeName, namedRange);
+            return namedRange;
+        }
+
         public void Delete(String rangeName)
         {
             _namedRanges.Remove(rangeName);
@@ -113,6 +140,22 @@ namespace ClosedXML.Excel
         public void DeleteAll()
         {
             _namedRanges.Clear();
+        }
+
+        /// <summary>
+        /// Returns a subset of named ranges that do not have invalid references.
+        /// </summary>
+        public IEnumerable<IXLNamedRange> ValidNamedRanges()
+        {
+            return this.Where(nr => nr.IsValid);
+        }
+
+        /// <summary>
+        /// Returns a subset of named ranges that do have invalid references.
+        /// </summary>
+        public IEnumerable<IXLNamedRange> InvalidNamedRanges()
+        {
+            return this.Where(nr => !nr.IsValid);
         }
 
         #endregion IXLNamedRanges Members
@@ -139,9 +182,7 @@ namespace ClosedXML.Excel
         {
             if (_namedRanges.TryGetValue(name, out range)) return true;
 
-            if (Worksheet != null)
-                range = Worksheet.NamedRange(name);
-            else
+            if (Scope == XLNamedRangeScope.Workbook)
                 range = Workbook.NamedRange(name);
 
             return range != null;
@@ -151,10 +192,17 @@ namespace ClosedXML.Excel
         {
             if (_namedRanges.ContainsKey(name)) return true;
 
-            if (Worksheet != null)
-                return Worksheet.NamedRange(name) != null;
-            else
+            if (Scope == XLNamedRangeScope.Workbook)
                 return Workbook.NamedRange(name) != null;
+            else
+                return false;
+        }
+
+        internal void OnWorksheetDeleted(string worksheetName)
+        {
+            _namedRanges.Values
+                .Cast<XLNamedRange>()
+                .ForEach(nr => nr.OnWorksheetDeleted(worksheetName));
         }
     }
 }

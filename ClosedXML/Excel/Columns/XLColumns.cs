@@ -6,17 +6,15 @@ namespace ClosedXML.Excel
 {
     using System.Collections;
 
-    internal class XLColumns : IXLColumns, IXLStylized
+    internal class XLColumns : XLStylizedBase, IXLColumns, IXLStylized
     {
-        public Boolean StyleChanged { get; set; }
         private readonly List<XLColumn> _columns = new List<XLColumn>();
         private readonly XLWorksheet _worksheet;
-        internal IXLStyle style;
 
         public XLColumns(XLWorksheet worksheet)
+            : base(XLStyle.Default.Value)
         {
             _worksheet = worksheet;
-            style = new XLStyle(this, XLWorkbook.DefaultStyle);
         }
 
         #region IXLColumns Members
@@ -29,23 +27,6 @@ namespace ClosedXML.Excel
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
-        }
-
-        public IXLStyle Style
-        {
-            get { return style; }
-            set
-            {
-                style = new XLStyle(this, value);
-
-                if (_worksheet != null)
-                    _worksheet.Style = value;
-                else
-                {
-                    foreach (XLColumn column in _columns)
-                        column.Style = value;
-                }
-            }
         }
 
         public Double Width
@@ -175,7 +156,7 @@ namespace ClosedXML.Excel
 
         public IXLCells Cells()
         {
-            var cells = new XLCells(false, false);
+            var cells = new XLCells(false, XLCellsUsedOptions.All);
             foreach (XLColumn container in _columns)
                 cells.Add(container.RangeAddress);
             return cells;
@@ -183,7 +164,7 @@ namespace ClosedXML.Excel
 
         public IXLCells CellsUsed()
         {
-            var cells = new XLCells(true, false);
+            var cells = new XLCells(true, XLCellsUsedOptions.All);
             foreach (XLColumn container in _columns)
                 cells.Add(container.RangeAddress);
             return cells;
@@ -191,7 +172,14 @@ namespace ClosedXML.Excel
 
         public IXLCells CellsUsed(Boolean includeFormats)
         {
-            var cells = new XLCells(true, includeFormats);
+            return CellsUsed(includeFormats
+                ? XLCellsUsedOptions.All
+                : XLCellsUsedOptions.AllContents);
+        }
+
+        public IXLCells CellsUsed(XLCellsUsedOptions options)
+        { 
+            var cells = new XLCells(true, options);
             foreach (XLColumn container in _columns)
                 cells.Add(container.RangeAddress);
             return cells;
@@ -207,22 +195,21 @@ namespace ClosedXML.Excel
             return this;
         }
 
-        public IXLColumns SetDataType(XLCellValues dataType)
+        public IXLColumns SetDataType(XLDataType dataType)
         {
             _columns.ForEach(c => c.DataType = dataType);
             return this;
         }
 
-        #endregion
+        #endregion IXLColumns Members
 
         #region IXLStylized Members
 
-        public IEnumerable<IXLStyle> Styles
+        public override IEnumerable<IXLStyle> Styles
         {
             get
             {
-                UpdatingStyle = true;
-                yield return style;
+                yield return Style;
                 if (_worksheet != null)
                     yield return _worksheet.Style;
                 else
@@ -232,19 +219,24 @@ namespace ClosedXML.Excel
                         yield return s;
                     }
                 }
-                UpdatingStyle = false;
             }
         }
 
-        public Boolean UpdatingStyle { get; set; }
-
-        public IXLStyle InnerStyle
+        protected override IEnumerable<XLStylizedBase> Children
         {
-            get { return style; }
-            set { style = new XLStyle(this, value); }
+            get
+            {
+                if (_worksheet != null)
+                    yield return _worksheet;
+                else
+                {
+                    foreach (XLColumn column in _columns)
+                        yield return column;
+                }
+            }
         }
 
-        public IXLRanges RangesUsed
+        public override IXLRanges RangesUsed
         {
             get
             {
@@ -254,7 +246,7 @@ namespace ClosedXML.Excel
             }
         }
 
-        #endregion
+        #endregion IXLStylized Members
 
         public void Add(XLColumn column)
         {
@@ -266,16 +258,10 @@ namespace ClosedXML.Excel
             _columns.ForEach(c => c.Collapsed = true);
         }
 
-        public IXLColumns Clear(XLClearOptions clearOptions = XLClearOptions.ContentsAndFormats)
+        public IXLColumns Clear(XLClearOptions clearOptions = XLClearOptions.All)
         {
-            _columns.ForEach(c=>c.Clear(clearOptions));
+            _columns.ForEach(c => c.Clear(clearOptions));
             return this;
-        }
-
-        public void Dispose()
-        {
-            if (_columns != null)
-                _columns.ForEach(c => c.Dispose());
         }
 
         public void Select()

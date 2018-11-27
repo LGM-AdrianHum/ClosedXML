@@ -25,7 +25,7 @@ namespace ClosedXML_Tests
             IXLWorksheet ws = new XLWorkbook().Worksheets.Add("Sheet1");
             IXLCell cell = ws.Cell(1, 1);
             IXLRange range = ws.Range("A1:B2");
-            bool actual = range.IsEmpty(true);
+            bool actual = range.IsEmpty(XLCellsUsedOptions.All);
             bool expected = true;
             Assert.AreEqual(expected, actual);
         }
@@ -49,7 +49,7 @@ namespace ClosedXML_Tests
             IXLCell cell = ws.Cell(1, 1);
             cell.Style.Fill.BackgroundColor = XLColor.Red;
             IXLRange range = ws.Range("A1:B2");
-            bool actual = range.IsEmpty(false);
+            bool actual = range.IsEmpty(XLCellsUsedOptions.AllContents);
             bool expected = true;
             Assert.AreEqual(expected, actual);
         }
@@ -61,7 +61,7 @@ namespace ClosedXML_Tests
             IXLCell cell = ws.Cell(1, 1);
             cell.Style.Fill.BackgroundColor = XLColor.Red;
             IXLRange range = ws.Range("A1:B2");
-            bool actual = range.IsEmpty(true);
+            bool actual = range.IsEmpty(XLCellsUsedOptions.All);
             bool expected = false;
             Assert.AreEqual(expected, actual);
         }
@@ -297,6 +297,131 @@ namespace ClosedXML_Tests
 
                 Assert.AreEqual(0, ws.Range("C3:D6").AsRange().SurroundingCells(c => !c.IsEmpty()).Count());
             }
+        }
+
+        [Test]
+        public void ClearConditionalFormattingsWhenRangeAbove1()
+        {
+            var ws = new XLWorkbook().Worksheets.Add("Sheet1");
+            ws.Range("C3:D7").AddConditionalFormat();
+            ws.Range("B2:E3").Clear(XLClearOptions.ConditionalFormats);
+
+            Assert.AreEqual(1, ws.ConditionalFormats.Count());
+            Assert.AreEqual("C4:D7", ws.ConditionalFormats.Single().Range.RangeAddress.ToStringRelative());
+        }
+
+        [Test]
+        public void ClearConditionalFormattingsWhenRangeAbove2()
+        {
+            var ws = new XLWorkbook().Worksheets.Add("Sheet1");
+            ws.Range("C3:D7").AddConditionalFormat();
+            ws.Range("C3:D3").Clear(XLClearOptions.ConditionalFormats);
+
+            Assert.AreEqual(1, ws.ConditionalFormats.Count());
+            Assert.AreEqual("C4:D7", ws.ConditionalFormats.Single().Range.RangeAddress.ToStringRelative());
+        }
+
+        [Test]
+        public void ClearConditionalFormattingsWhenRangeBelow1()
+        {
+            var ws = new XLWorkbook().Worksheets.Add("Sheet1");
+            ws.Range("C3:D7").AddConditionalFormat();
+            ws.Range("B7:E8").Clear(XLClearOptions.ConditionalFormats);
+
+            Assert.AreEqual(1, ws.ConditionalFormats.Count());
+            Assert.AreEqual("C3:D6", ws.ConditionalFormats.Single().Range.RangeAddress.ToStringRelative());
+        }
+
+        [Test]
+        public void ClearConditionalFormattingsWhenRangeBelow2()
+        {
+            var ws = new XLWorkbook().Worksheets.Add("Sheet1");
+            ws.Range("C3:D7").AddConditionalFormat();
+            ws.Range("C7:D7").Clear(XLClearOptions.ConditionalFormats);
+
+            Assert.AreEqual(1, ws.ConditionalFormats.Count());
+            Assert.AreEqual("C3:D6", ws.ConditionalFormats.Single().Range.RangeAddress.ToStringRelative());
+        }
+
+        [Test]
+        public void ClearConditionalFormattingsWhenRangeRowInMiddle()
+        {
+            var ws = new XLWorkbook().Worksheets.Add("Sheet1");
+            ws.Range("C3:D7").AddConditionalFormat();
+            ws.Range("C5:E5").Clear(XLClearOptions.ConditionalFormats);
+
+            Assert.AreEqual(1, ws.ConditionalFormats.Count());
+            Assert.AreEqual("C3:D4", ws.ConditionalFormats.First().Ranges.First().RangeAddress.ToStringRelative());
+            Assert.AreEqual("C6:D7", ws.ConditionalFormats.First().Ranges.Last().RangeAddress.ToStringRelative());
+        }
+
+        [Test]
+        public void ClearConditionalFormattingsWhenRangeColumnInMiddle()
+        {
+            var ws = new XLWorkbook().Worksheets.Add("Sheet1");
+            ws.Range("C3:G4").AddConditionalFormat();
+            ws.Range("E2:E4").Clear(XLClearOptions.ConditionalFormats);
+
+            Assert.AreEqual(1, ws.ConditionalFormats.Count());
+            Assert.AreEqual("C3:D4", ws.ConditionalFormats.First().Ranges.First().RangeAddress.ToStringRelative());
+            Assert.AreEqual("F3:G4", ws.ConditionalFormats.First().Ranges.Last().RangeAddress.ToStringRelative());
+        }
+
+        [Test]
+        public void ClearConditionalFormattingsWhenRangeContainsFormatWhole()
+        {
+            var ws = new XLWorkbook().Worksheets.Add("Sheet1");
+            ws.Range("C3:G4").AddConditionalFormat();
+            ws.Range("B2:G4").Clear(XLClearOptions.ConditionalFormats);
+
+            Assert.AreEqual(0, ws.ConditionalFormats.Count());
+        }
+
+        [Test]
+        public void NoClearConditionalFormattingsWhenRangePartiallySuperimposed()
+        {
+            var ws = new XLWorkbook().Worksheets.Add("Sheet1");
+            ws.Range("C3:G4").AddConditionalFormat();
+            ws.Range("C2:D3").Clear(XLClearOptions.ConditionalFormats);
+
+            Assert.AreEqual(1, ws.ConditionalFormats.Count());
+            Assert.AreEqual(1, ws.ConditionalFormats.Single().Ranges.Count);
+            Assert.AreEqual("C3:G4", ws.ConditionalFormats.Single().Ranges.Single().RangeAddress.ToStringRelative());
+        }
+
+        [Test]
+        public void RangesRemoveAllWithoutDispose()
+        {
+            var ws = new XLWorkbook().Worksheets.Add("Sheet1");
+            var ranges = new XLRanges();
+            ranges.Add(ws.Range("A1:A2"));
+            ranges.Add(ws.Range("B1:B2"));
+            var rangesCopy = ranges.ToList();
+
+            ranges.RemoveAll(null, false);
+            ws.FirstColumn().InsertColumnsBefore(1);
+
+            Assert.AreEqual(0, ranges.Count);
+            // if ranges were not disposed they addresses should change
+            Assert.AreEqual("B1:B2", rangesCopy.First().RangeAddress.ToString());
+            Assert.AreEqual("C1:C2", rangesCopy.Last().RangeAddress.ToString());
+        }
+
+
+        [Test]
+        public void RangesRemoveAllByCriteria()
+        {
+            var ws = new XLWorkbook().Worksheets.Add("Sheet1");
+            var ranges = new XLRanges();
+            ranges.Add(ws.Range("A1:A2"));
+            ranges.Add(ws.Range("B1:B3"));
+            ranges.Add(ws.Range("C1:C4"));
+            var otherRange = ws.Range("A3:D3");
+
+            ranges.RemoveAll(r => r.Intersects(otherRange));
+
+            Assert.AreEqual(1, ranges.Count);
+            Assert.AreEqual("A1:A2", ranges.Single().RangeAddress.ToString());
         }
     }
 }

@@ -91,7 +91,7 @@ namespace ClosedXML_Sandbox
             }
             foreach (var str in strings)
             {
-                str.SetValue(row, tmpString.ToString());
+                str.SetValue(row, tmpString.ToString(), null);
             }
 
             // Format decimals
@@ -99,7 +99,7 @@ namespace ClosedXML_Sandbox
 
             foreach (var dec in decimals)
             {
-                dec.SetValue(row, tmpDec);
+                dec.SetValue(row, tmpDec, null);
             }
 
             // Format ints
@@ -107,7 +107,7 @@ namespace ClosedXML_Sandbox
 
             foreach (var intValue in ints)
             {
-                intValue.SetValue(row, tmpInt);
+                intValue.SetValue(row, tmpInt, null);
             }
 
             // Format dates
@@ -115,7 +115,7 @@ namespace ClosedXML_Sandbox
             tmpDate = tmpDate.AddSeconds(rnd.Next(-10000, 100000));
             foreach (var dt in dates)
             {
-                dt.SetValue(row, tmpDate);
+                dt.SetValue(row, tmpDate, null);
             }
 
             // Format timespans
@@ -123,17 +123,47 @@ namespace ClosedXML_Sandbox
 
             foreach (var ts in timeSpans)
             {
-                ts.SetValue(row, tmpTimespan);
+                ts.SetValue(row, tmpTimespan, null);
             }
 
             // Format booleans
             var tmpBool = (rnd.Next(0, 2) > 0);
             foreach (var bl in booleans)
             {
-                bl.SetValue(row, tmpBool);
+                bl.SetValue(row, tmpBool, null);
             }
 
             return row;
+        }
+        
+        public static void PerformHeavyCalculation()
+        {
+            int rows = 200;
+            int columns = 200;
+            using (var wb = new XLWorkbook())
+            {
+                var sheet = wb.Worksheets.Add("TestSheet");
+                var lastColumnLetter = sheet.Column(columns).ColumnLetter();
+                for (int i = 1; i <= rows; i++)
+                {
+                    for (int j = 1; j <= columns; j++)
+                    {
+                        if (i == 1)
+                        {
+                            sheet.Cell(i, j).FormulaA1 = string.Format("=ROUND({0}*SIN({0}),2)", j);
+                        }
+                        else
+                        {
+                            sheet.Cell(i, j).FormulaA1 = string.Format("=SUM({0}$1:{0}{1})/SUM($A{1}:${2}{1})",
+                                sheet.Column(j).ColumnLetter(), i - 1, lastColumnLetter); // i.e. for K8 there will be =SUM(K$1:K7)/SUM($A7:$GR7)
+                        }
+                    }
+                }
+
+                var cells = sheet.CellsUsed();
+                var sum1 = cells.Sum(cell => (double)cell.Value);
+                Console.WriteLine("Total sum: {0:N2}", sum1);
+            }
         }
     }
 }

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace ClosedXML.Excel
 {
-    public interface IXLRows: IEnumerable<IXLRow>, IDisposable
+    public interface IXLRows : IEnumerable<IXLRow>
     {
         /// <summary>
         /// Sets the height of all rows.
@@ -22,11 +22,13 @@ namespace ClosedXML.Excel
         /// Adjusts the height of all rows based on its contents.
         /// </summary>
         IXLRows AdjustToContents();
+
         /// <summary>
         /// Adjusts the height of all rows based on its contents, starting from the startColumn.
         /// </summary>
         /// <param name="startColumn">The column to start calculating the row height.</param>
         IXLRows AdjustToContents(Int32 startColumn);
+
         /// <summary>
         /// Adjusts the height of all rows based on its contents, starting from the startColumn and ending at endColumn.
         /// </summary>
@@ -35,7 +37,9 @@ namespace ClosedXML.Excel
         IXLRows AdjustToContents(Int32 startColumn, Int32 endColumn);
 
         IXLRows AdjustToContents(Double minHeight, Double maxHeight);
+
         IXLRows AdjustToContents(Int32 startColumn, Double minHeight, Double maxHeight);
+
         IXLRows AdjustToContents(Int32 startColumn, Int32 endColumn, Double minHeight, Double maxHeight);
 
         /// <summary>
@@ -93,7 +97,7 @@ namespace ClosedXML.Excel
         /// Returns the collection of cells.
         /// </summary>
         IXLCells Cells();
-        
+
         /// <summary>
         /// Returns the collection of cells that have a value.
         /// </summary>
@@ -103,7 +107,10 @@ namespace ClosedXML.Excel
         /// Returns the collection of cells that have a value.
         /// </summary>
         /// <param name="includeFormats">if set to <c>true</c> will return all cells with a value or a style different than the default.</param>
+        [Obsolete("Use the overload with XLCellsUsedOptions")]
         IXLCells CellsUsed(Boolean includeFormats);
+
+        IXLCells CellsUsed(XLCellsUsedOptions options);
 
         IXLStyle Style { get; set; }
 
@@ -112,13 +119,13 @@ namespace ClosedXML.Excel
         /// </summary>
         IXLRows AddHorizontalPageBreaks();
 
-        IXLRows SetDataType(XLCellValues dataType);
+        IXLRows SetDataType(XLDataType dataType);
 
         /// <summary>
         /// Clears the contents of these rows.
         /// </summary>
         /// <param name="clearOptions">Specify what you want to clear.</param>
-        IXLRows Clear(XLClearOptions clearOptions = XLClearOptions.ContentsAndFormats);
+        IXLRows Clear(XLClearOptions clearOptions = XLClearOptions.All);
 
         void Select();
     }

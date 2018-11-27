@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using ClosedXML.Excel;
 using System.IO;
+using MoreLinq;
 
 namespace ClosedXML_Examples 
 {
@@ -50,7 +51,7 @@ namespace ClosedXML_Examples
                 .Size.SetWidth(30); // The width is set in the same units as row.Width
 
             // Set all comments to visible
-            ws.CellsUsed(true, c => c.HasComment).ForEach(c => c.Comment.SetVisible());
+            ws.CellsUsed(XLCellsUsedOptions.All, c => c.HasComment).ForEach(c => c.Comment.SetVisible());
         }
 
         private void AddProtection(XLWorkbook wb)
@@ -104,7 +105,7 @@ namespace ClosedXML_Examples
                 .ColorsAndLines.SetLineWeight(7.5);
 
             // Set all comments to visible
-            ws.CellsUsed(true, c => c.HasComment).ForEach(c => c.Comment.SetVisible());
+            ws.CellsUsed(XLCellsUsedOptions.All, c => c.HasComment).ForEach(c => c.Comment.SetVisible());
         }
 
         private void AddStyleAlignment(XLWorkbook wb)
@@ -148,7 +149,7 @@ namespace ClosedXML_Examples
 
 
             // Set all comments to visible
-            ws.CellsUsed(true, c => c.HasComment).ForEach(c => c.Comment.SetVisible());
+            ws.CellsUsed(XLCellsUsedOptions.All, c => c.HasComment).ForEach(c => c.Comment.SetVisible());
         }
 
         private static void AddMiscComments(XLWorkbook wb)
@@ -218,7 +219,7 @@ namespace ClosedXML_Examples
             ws.Cell("A9").Comment.SetAuthor("MDeLeon").AddSignature().AddText("Something");
             ws.Cell("A9").Comment.SetBold().SetFontColor(XLColor.DarkBlue);
 
-            ws.CellsUsed(true, c => !c.Address.ToStringRelative().Equals("A1") && c.HasComment).ForEach(c => c.Comment.SetVisible());
+            ws.CellsUsed(XLCellsUsedOptions.All, c => !c.Address.ToStringRelative().Equals("A1") && c.HasComment).ForEach(c => c.Comment.SetVisible());
         }
 
         private static void AddVisibilityComments(XLWorkbook wb)
@@ -260,7 +261,7 @@ namespace ClosedXML_Examples
                 .SetRowOffset(7.5); // The comment will start in the middle of the fifth row
 
             // Set all comments to visible
-            ws.CellsUsed(true, c => c.HasComment).ForEach(c => c.Comment.SetVisible());
+            ws.CellsUsed(XLCellsUsedOptions.All, c => c.HasComment).ForEach(c => c.Comment.SetVisible());
         }
 
         private void AddSignatures(XLWorkbook wb)
@@ -278,7 +279,7 @@ namespace ClosedXML_Examples
             
 
             // Set all comments to visible
-            ws.CellsUsed(true, c => c.HasComment).ForEach(c => c.Comment.SetVisible());
+            ws.CellsUsed(XLCellsUsedOptions.All, c => c.HasComment).ForEach(c => c.Comment.SetVisible());
         }
     }
 }

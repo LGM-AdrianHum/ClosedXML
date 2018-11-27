@@ -15,7 +15,7 @@ using System.Xml.Linq;
 
 namespace ClosedXML.Excel
 {
-    public static class Extensions
+    internal static class Extensions
     {
         // Adds the .ForEach method to all IEnumerables
 
@@ -84,7 +84,7 @@ namespace ClosedXML.Excel
         }
     }
 
-    public static class DictionaryExtensions
+    internal static class DictionaryExtensions
     {
         public static void RemoveAll<TKey, TValue>(this Dictionary<TKey, TValue> dic,
             Func<TValue, bool> predicate)
@@ -97,7 +97,7 @@ namespace ClosedXML.Excel
         }
     }
 
-    public static class StringExtensions
+    internal static class StringExtensions
     {
         private static readonly Regex RegexNewLine = new Regex(@"((?<!\r)\n|\r\n)", RegexOptions.Compiled);
 
@@ -134,7 +134,7 @@ namespace ClosedXML.Excel
         }
     }
 
-    public static class DateTimeExtensions
+    internal static class DateTimeExtensions
     {
         public static Double MaxOADate
         {
@@ -170,85 +170,51 @@ namespace ClosedXML.Excel
         }
     }
 
-    public static class IntegerExtensions
+    internal static class IntegerExtensions
     {
-        public static String ToInvariantString(this Int32 value)
+        public static bool Between(this int val, int from, int to)
         {
-            return value.ToString(CultureInfo.InvariantCulture.NumberFormat);
+            return val >= from && val <= to;
         }
     }
 
-    public static class DecimalExtensions
+    internal static class DecimalExtensions
     {
-        //All numbers are stored in XL files as invarient culture this is just a easy helper
-        public static String ToInvariantString(this Decimal value)
-        {
-            return value.ToString(CultureInfo.InvariantCulture);
-        }
-
         public static Decimal SaveRound(this Decimal value)
         {
             return Math.Round(value, 6);
         }
     }
 
-    public static class DoubleExtensions
+    internal static class DoubleExtensions
     {
-        //All numbers are stored in XL files as invarient culture this is just a easy helper
-        public static String ToInvariantString(this Double value)
-        {
-            return value.ToString(CultureInfo.InvariantCulture);
-        }
-
         public static Double SaveRound(this Double value)
         {
             return Math.Round(value, 6);
         }
     }
 
-    public static class FontBaseExtensions
+    internal static class FontBaseExtensions
     {
-        private static Font GetCachedFont(IXLFontBase fontBase, Dictionary<IXLFontBase, Font> fontCache)
-        {
-            Font font;
-            if (!fontCache.TryGetValue(fontBase, out font))
-            {
-                font = new Font(fontBase.FontName, (float)fontBase.FontSize, GetFontStyle(fontBase));
-                fontCache.Add(fontBase, font);
-            }
-            return font;
-        }
-
         public static Double GetWidth(this IXLFontBase fontBase, String text, Dictionary<IXLFontBase, Font> fontCache)
         {
             if (String.IsNullOrWhiteSpace(text))
                 return 0;
 
             var font = GetCachedFont(fontBase, fontCache);
+            var textWidth = GraphicsUtils.MeasureString(text, font).Width;
 
-            var textSize = GraphicsUtils.MeasureString(text, font);
-
-            double width = (((textSize.Width / (double)7) * 256) - (128 / 7)) / 256;
-            width = (double)decimal.Round((decimal)width + 0.2M, 2);
+            double width = (textWidth / 7d * 256 - 128 / 7) / 256;
+            width = Math.Round(width + 0.2, 2);
 
             return width;
-        }
-
-        private static FontStyle GetFontStyle(IXLFontBase font)
-        {
-            FontStyle fontStyle = FontStyle.Regular;
-            if (font.Bold) fontStyle |= FontStyle.Bold;
-            if (font.Italic) fontStyle |= FontStyle.Italic;
-            if (font.Strikethrough) fontStyle |= FontStyle.Strikeout;
-            if (font.Underline != XLFontUnderlineValues.None) fontStyle |= FontStyle.Underline;
-            return fontStyle;
         }
 
         public static Double GetHeight(this IXLFontBase fontBase, Dictionary<IXLFontBase, Font> fontCache)
         {
             var font = GetCachedFont(fontBase, fontCache);
-            var textSize = GraphicsUtils.MeasureString("X", font);
-            return (double)textSize.Height * 0.85;
+            var textHeight = GraphicsUtils.MeasureString("X", font).Height;
+            return (double)textHeight * 0.85;
         }
 
         public static void CopyFont(this IXLFontBase font, IXLFontBase sourceFont)
@@ -265,9 +231,29 @@ namespace ClosedXML.Excel
             font.FontFamilyNumbering = sourceFont.FontFamilyNumbering;
             font.FontCharSet = sourceFont.FontCharSet;
         }
+
+        private static Font GetCachedFont(IXLFontBase fontBase, Dictionary<IXLFontBase, Font> fontCache)
+        {
+            if (!fontCache.TryGetValue(fontBase, out Font font))
+            {
+                font = new Font(fontBase.FontName, (float)fontBase.FontSize, GetFontStyle(fontBase));
+                fontCache.Add(fontBase, font);
+            }
+            return font;
+        }
+
+        private static FontStyle GetFontStyle(IXLFontBase font)
+        {
+            FontStyle fontStyle = FontStyle.Regular;
+            if (font.Bold) fontStyle |= FontStyle.Bold;
+            if (font.Italic) fontStyle |= FontStyle.Italic;
+            if (font.Strikethrough) fontStyle |= FontStyle.Strikeout;
+            if (font.Underline != XLFontUnderlineValues.None) fontStyle |= FontStyle.Underline;
+            return fontStyle;
+        }
     }
 
-    public static class XDocumentExtensions
+    internal static class XDocumentExtensions
     {
         public static XDocument Load(Stream stream)
         {
@@ -278,7 +264,7 @@ namespace ClosedXML.Excel
         }
     }
 
-    public static class EnumerableExtensions
+    internal static class EnumerableExtensions
     {
         public static void ForEach<T>(this IEnumerable<T> source, Action<T> action)
         {
@@ -292,7 +278,7 @@ namespace ClosedXML.Excel
         }
     }
 
-    public static class ListExtensions
+    internal static class ListExtensions
     {
         public static void RemoveAll<T>(this IList<T> list, Func<T, bool> predicate)
         {
@@ -304,7 +290,7 @@ namespace ClosedXML.Excel
         }
     }
 
-    public static class DoubleValueExtensions
+    internal static class DoubleValueExtensions
     {
         public static DoubleValue SaveRound(this DoubleValue value)
         {
@@ -312,7 +298,7 @@ namespace ClosedXML.Excel
         }
     }
 
-    public static class TypeExtensions
+    internal static class TypeExtensions
     {
         public static bool IsNumber(this Type type)
         {
@@ -328,9 +314,18 @@ namespace ClosedXML.Excel
                     || type == typeof(double)
                     || type == typeof(decimal);
         }
+
+        public static bool IsSimpleType(this Type type)
+        {
+            return type.IsPrimitive
+                || type == typeof(String)
+                || type == typeof(DateTime)
+                || type == typeof(TimeSpan)
+                || type.IsNumber();
+        }
     }
 
-    public static class ObjectExtensions
+    internal static class ObjectExtensions
     {
         public static bool IsNumber(this object value)
         {
@@ -345,6 +340,57 @@ namespace ClosedXML.Excel
                     || value is float
                     || value is double
                     || value is decimal;
+        }
+
+        public static string ToInvariantString(this object value)
+        {
+            if (value == null)
+                return string.Empty;
+
+            switch (value)
+            {
+                case sbyte v:
+                    return v.ToString(CultureInfo.InvariantCulture);
+
+                case byte v:
+                    return v.ToString(CultureInfo.InvariantCulture);
+
+                case short v:
+                    return v.ToString(CultureInfo.InvariantCulture);
+
+                case ushort v:
+                    return v.ToString(CultureInfo.InvariantCulture);
+
+                case int v:
+                    return v.ToString(CultureInfo.InvariantCulture);
+
+                case uint v:
+                    return v.ToString(CultureInfo.InvariantCulture);
+
+                case long v:
+                    return v.ToString(CultureInfo.InvariantCulture);
+
+                case ulong v:
+                    return v.ToString(CultureInfo.InvariantCulture);
+
+                case float v:
+                    return v.ToString(CultureInfo.InvariantCulture);
+
+                case double v:
+                    return v.ToString(CultureInfo.InvariantCulture);
+
+                case decimal v:
+                    return v.ToString(CultureInfo.InvariantCulture);
+
+                case TimeSpan ts:
+                    return ts.ToString("c", CultureInfo.InvariantCulture);
+
+                case DateTime d:
+                    return d.ToString(CultureInfo.InvariantCulture);
+
+                default:
+                    return value.ToString();
+            }
         }
     }
 }

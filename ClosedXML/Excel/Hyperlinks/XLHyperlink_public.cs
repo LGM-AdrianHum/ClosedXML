@@ -75,14 +75,18 @@ namespace ClosedXML.Excel
                 if (_internalAddress.Contains('!'))
                 {
                     return _internalAddress[0] != '\''
-                               ? String.Format("{0}!{1}",
+                               ? String.Concat(
                                     _internalAddress
                                         .Substring(0, _internalAddress.IndexOf('!'))
-                                        .WrapSheetNameInQuotesIfRequired(),
+                                        .EscapeSheetName(),
+                                    '!',
                                     _internalAddress.Substring(_internalAddress.IndexOf('!') + 1))
                                : _internalAddress;
                 }
-                return String.Format("{0}!{1}", Worksheet.Name.WrapSheetNameInQuotesIfRequired(), _internalAddress);
+                return String.Concat(
+                    Worksheet.Name.EscapeSheetName(),
+                    '!',
+                    _internalAddress);
             }
             set
             {
@@ -98,9 +102,9 @@ namespace ClosedXML.Excel
             if (Cell == null) return;
             Worksheet.Hyperlinks.Delete(Cell.Address);
             if (Cell.Style.Font.FontColor.Equals(XLColor.FromTheme(XLThemeColor.Hyperlink)))
-                Cell.Style.Font.FontColor = Worksheet.Style.Font.FontColor;
+                Cell.Style.Font.FontColor = Worksheet.StyleValue.Font.FontColor;
 
-            Cell.Style.Font.Underline = Worksheet.Style.Font.Underline;
+            Cell.Style.Font.Underline = Worksheet.StyleValue.Font.Underline;
         }
     }
 }

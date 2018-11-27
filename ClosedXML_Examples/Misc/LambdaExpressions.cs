@@ -1,6 +1,7 @@
 using System.IO;
 using System.Linq;
 using ClosedXML.Excel;
+using MoreLinq;
 
 namespace ClosedXML_Examples
 {
@@ -32,7 +33,7 @@ namespace ClosedXML_Examples
                 //        .ForEach(c => c.Style.Fill.BackgroundColor = XLColor.LightGray); // Fill with a light gray
 
                 var cells = rngData.Cells();
-                var filtered = cells.Where(c => c.DataType == XLCellValues.Text);
+                var filtered = cells.Where(c => c.DataType == XLDataType.Text);
                 var list = filtered.ToList();
                 foreach (var c in list)
                 {

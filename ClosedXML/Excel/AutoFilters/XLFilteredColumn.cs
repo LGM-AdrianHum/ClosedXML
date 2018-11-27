@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 
 namespace ClosedXML.Excel
 {
@@ -16,7 +15,7 @@ namespace ClosedXML.Excel
 
         #region IXLFilteredColumn Members
 
-        public IXLFilteredColumn AddFilter<T>(T value) where T: IComparable<T>
+        public IXLFilteredColumn AddFilter<T>(T value) where T : IComparable<T>
         {
             Func<Object, Boolean> condition;
             Boolean isText;
@@ -32,30 +31,27 @@ namespace ClosedXML.Excel
             }
 
             _autoFilter.Filters[_column].Add(new XLFilter
-                                                 {
-                                                     Value = value,
-                                                     Condition = condition,
-                                                     Operator = XLFilterOperator.Equal,
-                                                     Connector = XLConnector.Or
-                                                 });
-
-            using (var rows = _autoFilter.Range.Rows(2, _autoFilter.Range.RowCount()))
             {
-                foreach (IXLRangeRow row in rows)
+                Value = value,
+                Condition = condition,
+                Operator = XLFilterOperator.Equal,
+                Connector = XLConnector.Or
+            });
+
+            var rows = _autoFilter.Range.Rows(2, _autoFilter.Range.RowCount());
+
+            foreach (IXLRangeRow row in rows)
+            {
+                if ((isText && condition(row.Cell(_column).GetString())) ||
+                    (!isText && row.Cell(_column).DataType == XLDataType.Number &&
+                     condition(row.Cell(_column).GetValue<T>())))
                 {
-                    if ((isText && condition(row.Cell(_column).GetString())) || (
-                                                                                    !isText &&
-                                                                                    row.Cell(_column).DataType ==
-                                                                                    XLCellValues.Number &&
-                                                                                    condition(
-                                                                                        row.Cell(_column).GetValue<T>()))
-                        )
-                        row.WorksheetRow().Unhide().Dispose();
+                    row.WorksheetRow().Unhide();
                 }
             }
             return this;
         }
 
-        #endregion
+        #endregion IXLFilteredColumn Members
     }
 }

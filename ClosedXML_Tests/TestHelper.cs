@@ -22,16 +22,16 @@ namespace ClosedXML_Tests
         {
             get
             {
-                return Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+                return Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "Generated");
             }
         }
 
         public const string ActualTestResultPostFix = "";
-        public static readonly string TestsExampleOutputDirectory = Path.Combine(TestsOutputDirectory, "Examples");
+        public static readonly string ExampleTestsOutputDirectory = Path.Combine(TestsOutputDirectory, "Examples");
 
         private const bool CompareWithResources = true;
 
-        private static readonly ResourceFileExtractor _extractor = new ResourceFileExtractor(null, ".Resource.Examples.");
+        private static readonly ResourceFileExtractor _extractor = new ResourceFileExtractor(".Resource.");
 
         public static void SaveWorkbook(XLWorkbook workbook, params string[] fileNameParts)
         {
@@ -42,6 +42,8 @@ namespace ClosedXML_Tests
         // the columns widths after AdjustToContents() will
         // cause the tests to fail.
         // Therefore we ignore the width attribute when running on Unix
+        public static bool StripColumnWidths { get { return IsRunningOnUnix; } }
+
         public static bool IsRunningOnUnix
         {
             get
@@ -59,7 +61,7 @@ namespace ClosedXML_Tests
 
             var example = new T();
             string[] pathParts = filePartName.Split(new char[] { '\\' });
-            string filePath1 = Path.Combine(new List<string>() { TestsExampleOutputDirectory }.Concat(pathParts).ToArray());
+            string filePath1 = Path.Combine(new List<string>() { ExampleTestsOutputDirectory }.Concat(pathParts).ToArray());
 
             var extension = Path.GetExtension(filePath1);
             var directory = Path.GetDirectoryName(filePath1);
@@ -75,36 +77,57 @@ namespace ClosedXML_Tests
             using (var wb = new XLWorkbook(filePath1))
                 wb.SaveAs(filePath2, true, evaluateFormulae);
 
-            bool success = true;
-#pragma warning disable 162
-            try
+            if (CompareWithResources)
             {
-                //Compare
-                // ReSharper disable ConditionIsAlwaysTrueOrFalse
-                if (CompareWithResources)
-                // ReSharper restore ConditionIsAlwaysTrueOrFalse
-
+                string resourcePath = "Examples." + filePartName.Replace('\\', '.').TrimStart('.');
+                using (var streamExpected = _extractor.ReadFileFromResourceToStream(resourcePath))
+                using (var streamActual = File.OpenRead(filePath2))
                 {
-                    string resourcePath = filePartName.Replace('\\', '.').TrimStart('.');
-                    using (var streamExpected = _extractor.ReadFileFromResToStream(resourcePath))
-                    using (var streamActual = File.OpenRead(filePath2))
-                    {
-                        string message;
-                        success = ExcelDocsComparer.Compare(streamActual, streamExpected, TestHelper.IsRunningOnUnix, out message);
-                        var formattedMessage =
-                            String.Format(
-                                "Actual file '{0}' is different than the expected file '{1}'. The difference is: '{2}'",
-                                filePath2, resourcePath, message);
+                    var success = ExcelDocsComparer.Compare(streamActual, streamExpected, out string message);
+                    var formattedMessage =
+                        String.Format(
+                            "Actual file '{0}' is different than the expected file '{1}'. The difference is: '{2}'",
+                            filePath2, resourcePath, message);
 
-                        Assert.IsTrue(success, formattedMessage);
-                    }
+                    Assert.IsTrue(success, formattedMessage);
                 }
             }
-            finally
+        }
+
+        public static void CreateAndCompare(Func<IXLWorkbook> workbookGenerator, string referenceResource, bool evaluateFormulae = false)
+        {
+            Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo("en-US");
+
+            string[] pathParts = referenceResource.Split(new char[] { '\\' });
+            string filePath1 = Path.Combine(new List<string>() { TestsOutputDirectory }.Concat(pathParts).ToArray());
+
+            var extension = Path.GetExtension(filePath1);
+            var directory = Path.GetDirectoryName(filePath1);
+
+            var fileName = Path.GetFileNameWithoutExtension(filePath1);
+            fileName += ActualTestResultPostFix;
+            fileName = Path.ChangeExtension(fileName, extension);
+
+            var filePath2 = Path.Combine(directory, fileName);
+
+            using (var wb = workbookGenerator.Invoke())
+                wb.SaveAs(filePath2, true, evaluateFormulae);
+
+            if (CompareWithResources)
             {
-                //if (success && File.Exists(filePath)) File.Delete(filePath);
+                string resourcePath = referenceResource.Replace('\\', '.').TrimStart('.');
+                using (var streamExpected = _extractor.ReadFileFromResourceToStream(resourcePath))
+                using (var streamActual = File.OpenRead(filePath2))
+                {
+                    var success = ExcelDocsComparer.Compare(streamActual, streamExpected, out string message);
+                    var formattedMessage =
+                        String.Format(
+                            "Actual file '{0}' is different than the expected file '{1}'. The difference is: '{2}'",
+                            filePath2, resourcePath, message);
+
+                    Assert.IsTrue(success, formattedMessage);
+                }
             }
-#pragma warning restore 162
         }
 
         public static string GetResourcePath(string filePartName)
@@ -114,17 +137,21 @@ namespace ClosedXML_Tests
 
         public static Stream GetStreamFromResource(string resourcePath)
         {
-            var extractor = new ResourceFileExtractor(null, ".Resource.");
-            return extractor.ReadFileFromResToStream(resourcePath);
+            return _extractor.ReadFileFromResourceToStream(resourcePath);
         }
 
         public static void LoadFile(string filePartName)
         {
+            IXLWorkbook wb;
             using (var stream = GetStreamFromResource(GetResourcePath(filePartName)))
             {
-                var wb = new XLWorkbook(stream);
-                wb.Dispose();
+                Assert.DoesNotThrow(() => wb = new XLWorkbook(stream), "Unable to load resource {0}", filePartName);
             }
+        }
+
+        public static IEnumerable<String> ListResourceFiles(Func<String, Boolean> predicate = null)
+        {
+            return _extractor.GetFileNames(predicate);
         }
     }
 }

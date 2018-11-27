@@ -1,5 +1,5 @@
-using System;
 using DocumentFormat.OpenXml.Spreadsheet;
+using System;
 
 namespace ClosedXML.Excel
 {
@@ -9,13 +9,14 @@ namespace ClosedXML.Excel
         {
             UInt32 val = UInt32.Parse(cf.Values[1].Value);
             var conditionalFormattingRule = XLCFBaseConverter.Convert(cf, priority);
-            conditionalFormattingRule.FormatId = (UInt32)context.DifferentialFormats[cf.Style];
+            var cfStyle = (cf.Style as XLStyle).Value;
+            if (!cfStyle.Equals(XLWorkbook.DefaultStyleValue))
+                conditionalFormattingRule.FormatId = (UInt32)context.DifferentialFormats[cfStyle.Key];
+
             conditionalFormattingRule.Percent = cf.Percent;
             conditionalFormattingRule.Rank = val;
             conditionalFormattingRule.Bottom = cf.Bottom;
             return conditionalFormattingRule;
         }
-
-
     }
 }

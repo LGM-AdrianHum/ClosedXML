@@ -10,7 +10,7 @@ namespace ClosedXML_Tests.Excel.CalcEngine
     {
         private XLWorkbook workbook;
 
-        [OneTimeSetUp]
+        [SetUp]
         public void Init()
         {
             // Make sure tests run on a deterministic culture
@@ -103,6 +103,10 @@ namespace ClosedXML_Tests.Excel.CalcEngine
             value = workbook.Evaluate(@"=VLOOKUP(""Central"",Data!D:E,2,FALSE)");
             Assert.AreEqual("Kivell", value);
 
+            // Case insensitive lookup
+            value = workbook.Evaluate(@"=VLOOKUP(""central"",Data!D:E,2,FALSE)");
+            Assert.AreEqual("Kivell", value);
+
             // Range lookup true
             value = workbook.Evaluate("=VLOOKUP(3,Data!$B$2:$I$71,8,TRUE)");
             Assert.AreEqual(179.64, value);
@@ -128,6 +132,21 @@ namespace ClosedXML_Tests.Excel.CalcEngine
             Assert.Throws<NoValueAvailableException>(() => workbook.Evaluate(@"=VLOOKUP(-1,Data!$B$2:$I$71,2,TRUE)"));
 
             Assert.Throws<CellReferenceException>(() => workbook.Evaluate(@"=VLOOKUP(20,Data!$B$2:$I$71,9,FALSE)"));
+        }
+
+        [Test]
+        public void Hyperlink()
+        {
+            XLHyperlink hl;
+            hl = XLWorkbook.EvaluateExpr("HYPERLINK(\"http://github.com/ClosedXML/ClosedXML\")") as XLHyperlink;
+            Assert.IsNotNull(hl);
+            Assert.AreEqual("http://github.com/ClosedXML/ClosedXML", hl.ExternalAddress.ToString());
+            Assert.AreEqual(string.Empty, hl.Tooltip);
+
+            hl = XLWorkbook.EvaluateExpr("HYPERLINK(\"mailto:jsmith@github.com\", \"jsmith@github.com\")") as XLHyperlink;
+            Assert.IsNotNull(hl);
+            Assert.AreEqual("mailto:jsmith@github.com", hl.ExternalAddress.ToString());
+            Assert.AreEqual("jsmith@github.com", hl.Tooltip);
         }
     }
 }

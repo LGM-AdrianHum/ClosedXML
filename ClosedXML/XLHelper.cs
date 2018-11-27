@@ -1,12 +1,12 @@
 using System;
+using System.Collections.Generic;
+using System.Drawing;
 using System.Globalization;
+using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace ClosedXML.Excel
 {
-    using System.Drawing;
-    using System.Linq;
-    using System.Text.RegularExpressions;
-
     /// <summary>
     /// 	Common methods
     /// </summary>
@@ -19,9 +19,12 @@ namespace ClosedXML.Excel
         public const String MaxColumnLetter = "XFD";
         public const Double Epsilon = 1e-10;
 
-        private const Int32 TwoT26 = 26 * 26;
-        internal static readonly Graphics Graphic = Graphics.FromImage(new Bitmap(200, 200));
-        internal static readonly Double DpiX = Graphic.DpiX;
+        public static String LastCell { get { return $"{MaxColumnLetter}{MaxRowNumber}"; } }
+
+        private static readonly Lazy<Graphics> graphics = new Lazy<Graphics>(() => Graphics.FromImage(new Bitmap(200, 200)));
+        internal static Graphics Graphics { get => graphics.Value; }
+        internal static Double DpiX { get => Graphics.DpiX; }
+
         internal static readonly NumberStyles NumberStyle = NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign | NumberStyles.AllowLeadingWhite | NumberStyles.AllowTrailingWhite | NumberStyles.AllowExponent;
         internal static readonly CultureInfo ParseCulture = CultureInfo.InvariantCulture;
 
@@ -53,6 +56,29 @@ namespace ClosedXML.Excel
                       RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture
                 );
 
+        private static readonly string[] letters = new[] { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" };
+
+        private static readonly string[] allLetters;
+        private static readonly Dictionary<string, int> letterIndexes;
+
+        static XLHelper()
+        {
+            allLetters = new string[XLHelper.MaxColumnNumber];
+            letterIndexes = new Dictionary<string, int>(XLHelper.MaxColumnNumber, StringComparer.Create(ParseCulture, true));
+            for (int i = 0; i < XLHelper.MaxColumnNumber; i++)
+            {
+                string letter;
+                if (i < 26)
+                    letter = letters[i];
+                else if (i < 26 * 27)
+                    letter = letters[i / 26 - 1] + letters[i % 26];
+                else
+                    letter = letters[(i - 26) / 26 / 26 - 1] + letters[(i / 26 - 1) % 26] + letters[i % 26];
+                allLetters[i] = letter;
+                letterIndexes.Add(letter, i + 1);
+            }
+        }
+
         /// <summary>
         /// Gets the column number of a given column letter.
         /// </summary>
@@ -61,28 +87,17 @@ namespace ClosedXML.Excel
         {
             if (string.IsNullOrEmpty(columnLetter)) throw new ArgumentNullException("columnLetter");
 
-            int retVal;
-            columnLetter = columnLetter.ToUpper();
-
             //Extra check because we allow users to pass row col positions in as strings
             if (columnLetter[0] <= '9')
             {
-                retVal = Int32.Parse(columnLetter, XLHelper.NumberStyle, XLHelper.ParseCulture);
+                return Int32.Parse(columnLetter, XLHelper.NumberStyle, XLHelper.ParseCulture);
+            }
+
+            if (letterIndexes.TryGetValue(columnLetter, out var retVal))
                 return retVal;
-            }
 
-            int sum = 0;
-
-            for (int i = 0; i < columnLetter.Length; i++)
-            {
-                sum *= 26;
-                sum += (columnLetter[i] - 'A' + 1);
-            }
-
-            return sum;
+            throw new ArgumentOutOfRangeException(columnLetter + " is not recognized as a column letter");
         }
-
-        private static readonly string[] letters = new[] { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" };
 
         /// <summary>
         /// Gets the column letter of a given column number.
@@ -94,14 +109,11 @@ namespace ClosedXML.Excel
         {
             if (trimToAllowed) columnNumber = TrimColumnNumber(columnNumber);
 
-            columnNumber--; // Adjust for start on column 1
-            if (columnNumber <= 25)
-            {
-                return letters[columnNumber];
-            }
-            var firstPart = (columnNumber) / 26;
-            var remainder = ((columnNumber) % 26) + 1;
-            return GetColumnLetterFromNumber(firstPart) + GetColumnLetterFromNumber(remainder);
+            if (columnNumber <= 0 || columnNumber > allLetters.Length)
+                throw new ArgumentOutOfRangeException(nameof(columnNumber));
+
+            // Adjust for start on column 1
+            return allLetters[columnNumber - 1];
         }
 
         internal static int TrimColumnNumber(int columnNumber)
@@ -116,8 +128,10 @@ namespace ClosedXML.Excel
 
         public static bool IsValidColumn(string column)
         {
+            if (String.IsNullOrWhiteSpace(column))
+                return false;
             var length = column.Length;
-            if (String.IsNullOrWhiteSpace(column) || length > 3)
+            if (length > 3)
                 return false;
 
             var theColumn = column.ToUpper();
@@ -145,8 +159,7 @@ namespace ClosedXML.Excel
 
         public static bool IsValidRow(string rowString)
         {
-            Int32 row;
-            if (Int32.TryParse(rowString, out row))
+            if (Int32.TryParse(rowString, out int row))
                 return row > 0 && row <= MaxRowNumber;
             return false;
         }
@@ -175,7 +188,7 @@ namespace ClosedXML.Excel
 
         public static Boolean IsValidRangeAddress(IXLRangeAddress rangeAddress)
         {
-            return !rangeAddress.IsInvalid
+            return rangeAddress.IsValid
                    && rangeAddress.FirstAddress.RowNumber >= 1 && rangeAddress.LastAddress.RowNumber <= MaxRowNumber
                    && rangeAddress.FirstAddress.ColumnNumber >= 1 && rangeAddress.LastAddress.ColumnNumber <= MaxColumnNumber
                    && rangeAddress.FirstAddress.RowNumber <= rangeAddress.LastAddress.RowNumber
@@ -225,6 +238,19 @@ namespace ClosedXML.Excel
 
             return rows;
         }
+
+#if false
+// Not using this anymore, but keeping it around for in case we bring back .NET3.5 support.
+        public static bool IsNullOrWhiteSpace(string value)
+        {
+#if _NET35_
+            if (value == null) return true;
+            return value.All(c => char.IsWhiteSpace(c));
+#else
+            return String.IsNullOrWhiteSpace(value);
+#endif
+        }
+#endif
 
         private static readonly Regex A1RegexRelative = new Regex(
       @"(?<=\W)(?<one>\$?[a-zA-Z]{1,3}\$?\d{1,7})(?=\W)" // A1
@@ -290,6 +316,45 @@ namespace ClosedXML.Excel
         internal static bool IsValidOADateNumber(this double d)
         {
             return -657435 <= d && d < 2958466;
+        }
+
+        public static Boolean ValidateName(String objectType, String newName, String oldName, IEnumerable<String> existingNames, out String message)
+        {
+            message = "";
+            if (String.IsNullOrWhiteSpace(newName))
+            {
+                message = $"The {objectType} name '{newName}' is invalid";
+                return false;
+            }
+
+            // Table names are case insensitive
+            if (!oldName.Equals(newName, StringComparison.OrdinalIgnoreCase)
+                && existingNames.Contains(newName, StringComparer.OrdinalIgnoreCase))
+            {
+                message = $"There is already a {objectType} named '{newName}'";
+                return false;
+            }
+
+            var allowedFirstCharacters = new[] { '_', '\\' };
+            if (!allowedFirstCharacters.Contains(newName[0]) && !char.IsLetter(newName[0]))
+            {
+                message = $"The {objectType} name '{newName}' does not begin with a letter, an underscore or a backslash.";
+                return false;
+            }
+
+            if (newName.Length > 255)
+            {
+                message = $"The {objectType} name is more than 255 characters";
+                return false;
+            }
+
+            if (new[] { 'C', 'R' }.Any(c => newName.ToUpper().Equals(c.ToString())))
+            {
+                message = $"The {objectType} name '{newName}' is invalid";
+                return false;
+            }
+
+            return true;
         }
     }
 }
